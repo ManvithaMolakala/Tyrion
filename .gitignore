@@ -1,7 +1,6 @@
 __pycache__/
 .ipynb_checkpoints
 .venv/
-nohup.log
 chat_history.db
 .env
 data/
