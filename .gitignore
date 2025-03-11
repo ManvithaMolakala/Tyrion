@@ -4,3 +4,4 @@ __pycache__/
 nohup.log
 chat_history.db
 .env
+data/
