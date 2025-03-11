@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+langchain
+langchain_community
+langchain_huggingface
+sentence-transformers
+python-dotenv
+python-telegram-bot
+faiss-cpu
+requests 
+beautifulsoup4 
+lxml
+pandas
+Ollama
+langchain_ollama
