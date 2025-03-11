@@ -31,7 +31,3 @@ response = model.generate(**prompt_embeddings, max_length=500) # default max_new
 response_final = tokeniser.decode(response[0], skip_special_tokens=True)
 
 print(response_final)
-
-
-
- 

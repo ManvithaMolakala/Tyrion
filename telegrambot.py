@@ -26,7 +26,7 @@ chatbot = create_chatbot(RETRIEVER_PATH)
 logger.info("Chatbot initialized")
 
 # Initialize SQLite database
-DB_PATH = "chat_history.db"
+DB_PATH = "data/chat_history.db"
 
 def init_db():
     """Creates the database if it doesn't exist."""
