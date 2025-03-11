@@ -1,7 +1,6 @@
 __pycache__/
 .ipynb_checkpoints
 .venv/
-chat_history.db
+.DS_Store
 .env
 data/
-.DS_Store
