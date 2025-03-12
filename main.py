@@ -1,19 +1,12 @@
 import time
-from chatbot import create_chatbot  # Import your chatbot function
-
+from src.chatbot_ollama import create_chatbot  # Import your chatbot function
 
 start_time = time.time()  # Start the timer
-
-
 # Path to be checked after running the script "web_scrapping.py"
-SCRAPED_DATA_PATH = "data/combined.txt"
-RETRIEVER_PATH = "data/combined_retriever.pkl"
-
-
+RETRIEVER_PATH = "src/data/combined_retriever.pkl"
 
 # Initialize the chatbot with the JSON file
-# chatbot = create_chatbot(SCRAPED_DATA_PATH, "Text", rag=True)
-chatbot = create_chatbot(RETRIEVER_PATH, "Retriever", rag=True)
+chatbot = create_chatbot(RETRIEVER_PATH)
 
 mid_time  = time.time()
 # Query the chatbot
@@ -28,8 +21,6 @@ print(response['result'])
 answer = response["result"].split("point):", 1)[-1].strip()
 
 print(answer)
-
 print(f"Time taken to create chatbot: {mid_time - start_time:.4f} seconds")
-
 # Print the execution time
 print(f"Total Execution Time: {end_time - start_time:.4f} seconds")
