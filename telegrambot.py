@@ -1,6 +1,6 @@
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from chatbot_ollama import create_chatbot
+from src.chatbot_ollama import create_chatbot
 import logging
 import os
 import sqlite3
@@ -19,14 +19,14 @@ BOT_USERNAME = "@TyrionAibot"
 
 
 # Initialize the chatbot
-RETRIEVER_PATH = "data/combined_retriever.pkl"
+RETRIEVER_PATH = "src/data/combined_retriever.pkl"
 # chatbot = create_chatbot(RETRIEVER_PATH, path_to_local_model)
 chatbot = create_chatbot(RETRIEVER_PATH)
 
 logger.info("Chatbot initialized")
 
 # Initialize SQLite database
-DB_PATH = "data/chat_history.db"
+DB_PATH = "src/data/chat_history.db"
 
 def init_db():
     """Creates the database if it doesn't exist."""
