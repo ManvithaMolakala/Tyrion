@@ -23,7 +23,7 @@ def load_and_prepare_data(file_path):
     """Loads and prepares text data for embedding."""
     loader = TextLoader(file_path)
     documents = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     texts = text_splitter.split_documents(documents)
     print(f"Created {len(texts)} chunks of text.")
     return texts
@@ -53,7 +53,7 @@ def create_retriever(file_path):
     """Creates a retriever from text data."""
     texts = load_and_prepare_data(file_path)
     vector_store = create_vector_store(texts)
-    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 4})   # default k = 4
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 10})   # default k = 4
     print("Retriever created successfully!")
     print(type(retriever))
     return retriever
@@ -122,10 +122,7 @@ def create_chatbot(file_path, mode="Retriever"):
             chain_type="stuff",
             retriever=retriever,
             return_source_documents=False,
-            chain_type_kwargs={
-            "prompt": prompt
-            # "output_parser": StrOutputParser()
-            },  # Ensures clean text output
+            chain_type_kwargs={"prompt": prompt},  # Ensures clean text output
         )
 
     return chatbot
