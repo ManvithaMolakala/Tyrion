@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the SQLite database
-db_path = "chat_history.db"  # Change to your actual database file
+db_path = "data/chat_history.db"  # Change to your actual database file
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
