@@ -5,9 +5,13 @@ from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import OllamaEmbeddings, OllamaLLM
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 # from langchain_core.prompts import ChatPromptTemplate
+import faiss  
+import time 
+
 
 # Load API key from .env file (not needed for local models but keeping for flexibility)
 load_dotenv()
@@ -27,10 +31,21 @@ def load_and_prepare_data(file_path):
 
 def create_vector_store(texts):
     """Creates a FAISS vector store from text data."""
-    embeddings = OllamaEmbeddings(model="Mistral", device = device)
-    FAISS.omp_set_num_threads(6)  # Use multiple CPU threads for FAISS
+    start_time = time.time()
+    print("🔄 Initializing Ollama Embeddings...")
+
+    embeddings = HuggingFaceEmbeddings(
+        model_name="BAAI/bge-small-en-v1.5",
+        model_kwargs={'device': device},
+        encode_kwargs={'normalize_embeddings': True}
+    )
+    print("🔄 Setting FAISS threads...")
+    faiss.omp_set_num_threads(6)  # Use multiple CPU threads for FAISS
+    print("🔄 Generating embeddings and creating FAISS index...")
     vector_store = FAISS.from_documents(texts, embeddings)
-    print("Vector store created successfully!")
+    end_time = time.time()
+    print(f"✅ Vector store created successfully in {end_time - start_time:.2f} seconds!")
+
     return vector_store
 
 

@@ -4,12 +4,15 @@ from dotenv import load_dotenv
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFacePipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
+import multiprocessing
+print("CPU cores available:", multiprocessing.cpu_count())
+
 
 # Load API key from .env file (not needed for local models but keeping for flexibility)
 load_dotenv()
@@ -26,7 +29,7 @@ def load_and_prepare_data(file_path):
 
 def create_vector_store(texts):
     """Creates a FAISS vector store from text data."""
-    embeddings = HuggingFaceBgeEmbeddings(
+    embeddings = HuggingFaceEmbeddings(
         model_name="BAAI/bge-small-en-v1.5",
         model_kwargs={'device': 'cpu'},
         encode_kwargs={'normalize_embeddings': True}
