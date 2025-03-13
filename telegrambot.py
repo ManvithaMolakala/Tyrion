@@ -119,7 +119,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("full prompt:", full_prompt)
     try:
         entire_response = chatbot.invoke({"query": full_prompt})
+        # entire_response = chatbot.process_query({"query": full_prompt})
         response = entire_response["result"].split("point):", 1)[-1].strip()
+        retrieved_docs = entire_response.get("source_documents", [])  # List of retrieved documents
+        # ✅ Print retrieved docs
+        if retrieved_docs:
+            print("\n========== RETRIEVED CONTEXT ==========")
+            for idx, doc in enumerate(retrieved_docs, start=1):
+                print(f"🔹 Document {idx}: {doc.page_content[:500]}")  # Print first 500 chars
+            print("=================================")
+        else:
+            print("\n⚠️ No relevant documents retrieved!\n")    
     except Exception as e:
         logger.error(f"Chatbot error: {e}")
         response = "Sorry, something went wrong while processing your request."
