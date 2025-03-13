@@ -14,7 +14,6 @@ import json
 BASE_URLS = {
     "starknet": "https://docs.starknet.io/",
     "strkfarm": "https://docs.strkfarm.com/",
-    "defillama": "https://docs.llama.fi/",
     "nostra": "https://docs.nostra.finance/",
     "ekubo": "https://docs.ekubo.org/",
     "vesu": "https://docs.vesu.xyz/",
@@ -31,7 +30,6 @@ BASE_URLS = {
 SCRAPE_MODES = {# 1 = Scrape, 0 = Load
     "starknet": 0,  
     "strkfarm": 0,
-    "defillama": 0,
     "nostra": 0,
     "ekubo": 0,
     "vesu": 0,
@@ -49,7 +47,7 @@ DEFI_LLAMA_API_URLS = {
     "yields": "https://api.llama.fi/pools",
 }
 
-DATA_DIR = "data"
+DATA_DIR = "src/data"
 API_DATA_DIR = os.path.join(DATA_DIR, "defillama")  
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(API_DATA_DIR, exist_ok=True)
@@ -74,23 +72,26 @@ def fetch_and_save_defillama_data():
             response = requests.get(url, headers={"User-Agent": random.choice(USER_AGENTS)}, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                file_path = os.path.join(API_DATA_DIR, f"{name}.json")
+                file_path = os.path.join(API_DATA_DIR, f"{name}.txt")
 
-                # Save JSON data directly to a file
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=4)  # Pretty-print JSON with indentation
-
-
-                # # Convert JSON data to a readable text format and save it
+                # # Save JSON data directly to a file
                 # with open(file_path, "w", encoding="utf-8") as f:
-                #     for entry in data:
-                #         f.write(f"Name: {entry.get('name', 'N/A')}\n")
-                #         f.write(f"Chain: {entry.get('chain', 'N/A')}\n")
-                #         f.write(f"TVL: {entry.get('tvl', 'N/A')}\n")
-                #         f.write(f"Descrpition: {entry.get('description', 'N/A')}\n")
-                #         f.write(f"URL: {entry.get('url', 'N/A')}\n")
-                #         f.write(f"Category: {entry.get('category', 'N/A')}\n")
-                #         f.write("-" * 50 + "\n")
+                #     json.dump(data, f, indent=4)  # Pretty-print JSON with indentation
+
+
+                # Convert JSON data to a readable text format and save it
+                with open(file_path, "w", encoding="utf-8") as f:
+                    for entry in data:
+                        if entry.get("chain", "").lower() == "starknet":  # Check if chain is Starknet (case-insensitive)
+                            f.write(f" Protocol named {entry.get('name', 'N/A')}")
+                            f.write(f" is on {entry.get('chain', 'N/A')} chain.")
+                            f.write(f" The TVL of this protocols is ${round(entry.get('tvl', 0)):,.0f}.")
+                            f.write(f" {entry.get('description', 'N/A')}")
+                            f.write(f" This app can be found at the URL, {entry.get('url', 'N/A')}")
+                            f.write(f" It belongs to {entry.get('category', 'N/A')} category\n")
+                            f.write("\n")
+                            f.write("-" * 50 + "\n")
+                            f.write("\n")
 
                 logging.info(f"✅ Saved DeFiLlama data: {file_path}")
                 all_data_files.append(file_path)  # ✅ Only store file paths
@@ -216,11 +217,11 @@ async def scrape_selected_websites():
 
     # 🔥 Fetch and append DeFiLlama data (file paths)
     api_data = fetch_and_save_defillama_data()
-    all_data_files.extend(api_data)  # ✅ Corrected
+    all_data_files.extend(api_data)
 
     # 🔥 Save combined file
     combined_file_path = os.path.join(DATA_DIR, "combined.txt")
-    save_path = os.path.join(DATA_DIR, "combined_retriever.txt")
+    save_path = os.path.join(DATA_DIR, "combined_retriever.pkl")
     save_combined_text_file(all_data_files, combined_file_path)
 
     # 🔥 Pass the combined file to retriever
