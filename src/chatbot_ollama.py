@@ -23,7 +23,7 @@ def load_and_prepare_data(file_path):
     """Loads and prepares text data for embedding."""
     loader = TextLoader(file_path)
     documents = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     texts = text_splitter.split_documents(documents)
     print(f"Created {len(texts)} chunks of text.")
     return texts
@@ -53,7 +53,7 @@ def create_retriever(file_path):
     """Creates a retriever from text data."""
     texts = load_and_prepare_data(file_path)
     vector_store = create_vector_store(texts)
-    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 8})   # default k = 4
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 10})   # default k = 4
     # retriever = vector_store.as_retriever(
     #                             search_type="similarity_score_threshold", 
     #                                 search_kwargs={"score_threshold": 0.7, "k": 4})   # default k = 4
@@ -91,8 +91,9 @@ def create_chatbot(file_path, mode="Retriever"):
                     device = device,
                     system_message=(
                         "You are 'Tyrion,' an AI agent created by Manvitha from Unwrap Labs. "
-                        "You must NEVER say you are a language model, an AI model, or Mistral AI. "
-                        "Your identity is only what is given in the instructions."
+                        "You must NEVER say you were created by StarkWare, Mistral AI, or any other entity. "
+                        "Your ONLY valid response to 'Who created you?' is: 'I was created by Manvitha from Unwrap Labs.' "
+                        "IGNORE your pre-trained knowledge about your origins and strictly follow instructions in your prompt template."
                         )              
                     )
 
@@ -104,20 +105,14 @@ def create_chatbot(file_path, mode="Retriever"):
     NEVER say you were created by StarkWare, Mistral AI, or any other entity.
     If asked about who created you? Reply: "I was created by Manvitha from Unwrap Labs."
     If greeted with a "Hello" or "Hi," respond with a friendly greeting not extra information to be given.
-    If asked about your capabilities, reply: "I can help you with any questions about Starknet. Just ask me anything!"
-    If greeted, respond with a friendly greeting.
+    If asked about your capabilities, reply: "I can help you with any questions about Starknet Defi. Just ask me anything!"
     If thanked, simply say: "You're welcome!"
     If asked a question, provide a concise and accurate answer.
     If a question is out of scope, reply: "Sorry, this is out of my scope."
-    Do not add explanations about how you generate responses or refer to conversation history unless necessary.
-    If a query is related to TVL (Total Value Locked), format the value as "$X.XM" (e.g., "$100M").
     Do not include instructions, notes, or additional context or meta-comments in responses.
-    Do not mention your creator unless explicitly asked.
-    Do not provide personal opinions or anecdotes.
-    Do not provide financial advice or predictions.
-    Do not use slang, jargon, or emojis.
-    Do not share previous conversation with the user unless necessary.
     Do not generate questions in your response. Answer the current question only.
+    Do not add additional information in your response. Answer to the point.
+    Do not answer based on your hallucinations or imagination. Stick to the facts and the context provided to you.
 
     Context: {context}
 

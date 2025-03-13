@@ -85,10 +85,14 @@ def fetch_and_save_defillama_data():
                         if entry.get("chain", "").lower() == "starknet":  # Check if chain is Starknet (case-insensitive)
                             f.write(f" Protocol named {entry.get('name', 'N/A')}")
                             f.write(f" is on {entry.get('chain', 'N/A')} chain.")
-                            f.write(f" The TVL of this protocols is ${round(entry.get('tvl', 0)):,.0f}.")
-                            f.write(f" {entry.get('description', 'N/A')}")
-                            f.write(f" This app can be found at the URL, {entry.get('url', 'N/A')}")
-                            f.write(f" It belongs to {entry.get('category', 'N/A')} category\n")
+                            f.write(f" The TVL of this protocol, {entry.get('name', 'N/A')} is ${round(entry.get('tvl', 0)):,.0f}.")
+                            f.write(f" The hourly change in TVL for this protocol, {entry.get('name', 'N/A')} is ${round(entry.get('change_1h', 0) or 0):,.4f}.")
+                            f.write(f" The daily change in TVL for this protocol, {entry.get('name', 'N/A')} is ${round(entry.get('change_1d', 0) or 0):,.4f}.")
+                            f.write(f" The weekly change in TVL for this protocol, {entry.get('name', 'N/A')} is ${round(entry.get('change_7d', 0) or 0):,.4f}.")
+                            f.write(f" It is a {entry.get('description', 'N/A')}")
+                            f.write(f" The website url for this protocol can be found at '{entry.get('url', 'N/A')}'. ")
+                            f.write(f" It belongs to {entry.get('category', 'N/A')} category")
+                            f.write(f" The twitter profile of this protocol is '@{entry.get('twitter', 'N/A')}'. \n")
                             f.write("\n")
                             f.write("-" * 50 + "\n")
                             f.write("\n")
@@ -173,6 +177,10 @@ async def scrape_page(session, url, semaphore):
                 text = soup.get_text(separator="\n")
                 clean_text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
+                # 🛑 Filter out common unwanted text
+                unwanted_phrases = ["Privacy Policy", "Terms of Service", "Cookies", "Subscribe", "Back to top"]
+                clean_text = "\n".join(line for line in clean_text.split("\n") if not any(phrase in line for phrase in unwanted_phrases))
+
                 return {"url": url, "content": clean_text}
 
         except Exception as e:
@@ -185,7 +193,7 @@ def save_scraped_data(website_name, scraped_data):
 
     with open(file_path, "w", encoding="utf-8") as f:
         for entry in scraped_data:
-            f.write(f"====== {entry['url']} ======\n")  
+            # f.write(f"====== {entry['url']} ======\n")  
             f.write(entry["content"] + "\n\n")
 
     print(f"✅ Saved combined data for {website_name}: {file_path}")
