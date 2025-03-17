@@ -1,9 +1,19 @@
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.chatbot_ollama import create_chatbot
+from src.wallet_portfolio import get_token_balances
 import logging
 import os
 import sqlite3
+import re
+import asyncio
+
+# ✅ Fix event loop issue
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -109,7 +119,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     username = user.username or user.first_name or user.last_name or f"User_{user.id}"
 
+    # ✅ Show "typing..." in the background without blocking execution
+    asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
     logger.info(f"[User] {username}: {text}")
+
+    # Check if the message is related to wallets
+    wallet_keywords = ["wallet", "balance", "portfolio", "funds"]
+    if any(keyword in text for keyword in wallet_keywords):
+        user = update.message.from_user
+        username = user.username or user.first_name or user.last_name or f"User_{user.id}"
+        """Extracts Starknet-style contract addresses from the text."""
+        # Starknet addresses are usually 66-character hex or large decimal numbers
+        pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
+        contract_address = re.findall(pattern, text)
+
+        # Simulated response (replace this with actual wallet API call if available)
+        response = await get_token_balances(contract_address[0])
+        
+        logger.info(f"[Wallet Query] {username}: {update.message.text}")
+        
+        await update.message.reply_text(response)
+        return
+    
 
     previous_conversation = get_last_messages(chat_id, limit=2)
     save_message(chat_id, username, "user", text)
