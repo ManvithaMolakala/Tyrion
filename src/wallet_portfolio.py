@@ -76,7 +76,7 @@ async def fetch_balance(token_name: str, token_address: str, contract_address: i
         return token_name, 0.0
 
 async def get_token_balances(contract_address: str) -> str:
-    """Fetches balances of all tracked ERC-20 tokens for a given contract address in parallel and formats the output."""
+    """Fetches balances of all tracked ERC-20 tokens, skipping zero-value balances."""
     contract_address = int(contract_address, 16)
 
     # Fetch balances concurrently
@@ -84,10 +84,13 @@ async def get_token_balances(contract_address: str) -> str:
         *(fetch_balance(token_name, token_address, contract_address) for token_name, token_address in PORTFOLIO_TOKENS.items())
     )
 
+    # Filter out tokens with zero balance
+    non_zero_balances = [(token, balance) for token, balance in results if balance > 0]
+
     # Format the output
-    balance_str = "\n".join(f"{token}: {balance:.6f}" for token, balance in results)
-    
-    return balance_str  # Return formatted string
+    balance_str = "\n".join(f"{token}: {balance:.6f}" for token, balance in non_zero_balances)
+
+    return balance_str if balance_str else "No tokens with balance found."
 
 # async def main():
 #     contract_address = "0x04cced5156ab726bf0e0ca2afeb1f521de0362e748b8bdf07857b088dbc7b457"
