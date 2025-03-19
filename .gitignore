@@ -5,3 +5,4 @@ __pycache__/
 chat_history.db
 .env
 data/
+frontend_prompt.txt
