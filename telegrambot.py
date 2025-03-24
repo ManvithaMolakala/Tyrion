@@ -1,7 +1,8 @@
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.chatbot_ollama import create_chatbot
-from src.wallet_portfolio import get_token_balances
+from src.wallet_portfolio import get_token_balances, get_token_balances_dict
+from src.extract_apy import find_best_investments
 import logging
 import os
 import sqlite3
@@ -124,7 +125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"[User] {username}: {text}")
 
     # Check if the message is related to wallets
-    wallet_keywords = ["wallet", "balance", "portfolio", "funds"]
+    wallet_keywords = ["wallet", "balance", "portfolio", "funds", "investment options"]
     if any(keyword in text for keyword in wallet_keywords):
         user = update.message.from_user
         username = user.username or user.first_name or user.last_name or f"User_{user.id}"
@@ -135,10 +136,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Simulated response (replace this with actual wallet API call if available)
         response = await get_token_balances(contract_address[0])
+        my_tokens = await get_token_balances_dict(contract_address[0])
         
+        investment_options = await find_best_investments(my_tokens)
         logger.info(f"[Wallet Query] {username}: {update.message.text}")
         
-        await update.message.reply_text(response)
+        await update.message.reply_text(response+"\n"+investment_options)
+
         return
     
 
