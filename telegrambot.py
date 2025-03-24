@@ -8,6 +8,7 @@ import os
 import sqlite3
 import re
 import asyncio
+from src.investment_agent import investment_agent
 
 # ✅ Fix event loop issue
 try:
@@ -123,9 +124,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ Show "typing..." in the background without blocking execution
     asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
     logger.info(f"[User] {username}: {text}")
+    
+
+    previous_conversation = get_last_messages(chat_id, limit=2)
+    save_message(chat_id, username, "user", text)
+
+    full_prompt = f"I am sharing our previous conversation here: \n\n Previous conversation: \n{previous_conversation}. \n\n Use the previous conversation to answer my question only if the user is asking a follow-up question or is referring to the previous question. Else ignore the previous conversation and answer only the current question. \n Here is the New question: {text}. \n Bot:"
+    # full_prompt = text
+    print("full prompt:", full_prompt)
+    # try:
+    #     entire_response = chatbot.invoke({"query": full_prompt})
+    #     # entire_response = chatbot.process_query({"query": full_prompt})
+    #     response = entire_response["result"].split("point):", 1)[-1].strip()
+    #     retrieved_docs = entire_response.get("source_documents", [])  # List of retrieved documents
+    #     # ✅ Print retrieved docs
+    #     if retrieved_docs:
+    #         print("\n========== RETRIEVED CONTEXT ==========")
+    #         for idx, doc in enumerate(retrieved_docs, start=1):
+    #             print(f"🔹 Document {idx}: {doc.page_content[:500]}")  # Print first 500 chars
+    #         print("=================================")
+    #     else:
+    #         print("\n⚠️ No relevant documents retrieved!\n")    
+    # except Exception as e:
+    #     logger.error(f"Chatbot error: {e}")
+    #     response = "Sorry, something went wrong while processing your request."
+    
+    # save_message(chat_id, "TyrionAI", "bot", response)
+    # logger.info(f"[Bot] TyrionAI: {response}")
+
+    # for part in split_message(response):
+    #     await update.message.reply_text(part)
 
     # Check if the message is related to wallets
-    wallet_keywords = ["wallet", "balance", "portfolio", "funds", "investment options"]
+    wallet_keywords = ["wallet", "balance", "portfolio", "funds"]
     if any(keyword in text for keyword in wallet_keywords):
         user = update.message.from_user
         username = user.username or user.first_name or user.last_name or f"User_{user.id}"
@@ -135,45 +166,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         contract_address = re.findall(pattern, text)
 
         # Simulated response (replace this with actual wallet API call if available)
-        response = await get_token_balances(contract_address[0])
-        my_tokens = await get_token_balances_dict(contract_address[0])
-        
-        investment_options = await find_best_investments(my_tokens)
+        # response = await get_token_balances(contract_address[0])
+        wallet_balance = await get_token_balances_dict(contract_address[0])
+        # response = investment_agent.invoke(wallet_balance)
+        # investment_options = await find_best_investments(wallet_balance)
         logger.info(f"[Wallet Query] {username}: {update.message.text}")
         
-        await update.message.reply_text(response+"\n"+investment_options)
-
+        await update.message.reply_text(wallet_balance)
         return
-    
-
-    previous_conversation = get_last_messages(chat_id, limit=2)
-    save_message(chat_id, username, "user", text)
-
-    full_prompt = f"I am sharing our previous conversation here: \n\n Previous conversation: \n{previous_conversation}. \n\n Use the previous conversation to answer my question only if the user is asking a follow-up question or is referring to the previous question. Else ignore the previous conversation and answer only the current question. \n Here is the New question: {text}. \n Bot:"
-    # full_prompt = text
-    print("full prompt:", full_prompt)
-    try:
-        entire_response = chatbot.invoke({"query": full_prompt})
-        # entire_response = chatbot.process_query({"query": full_prompt})
-        response = entire_response["result"].split("point):", 1)[-1].strip()
-        retrieved_docs = entire_response.get("source_documents", [])  # List of retrieved documents
-        # ✅ Print retrieved docs
-        if retrieved_docs:
-            print("\n========== RETRIEVED CONTEXT ==========")
-            for idx, doc in enumerate(retrieved_docs, start=1):
-                print(f"🔹 Document {idx}: {doc.page_content[:500]}")  # Print first 500 chars
-            print("=================================")
-        else:
-            print("\n⚠️ No relevant documents retrieved!\n")    
-    except Exception as e:
-        logger.error(f"Chatbot error: {e}")
-        response = "Sorry, something went wrong while processing your request."
-    
-    save_message(chat_id, "TyrionAI", "bot", response)
-    logger.info(f"[Bot] TyrionAI: {response}")
-
-    for part in split_message(response):
-        await update.message.reply_text(part)
 
 # Start bot
 if __name__ == "__main__":
