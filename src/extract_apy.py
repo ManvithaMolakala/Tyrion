@@ -4,17 +4,16 @@ import httpx
 from dotenv import load_dotenv
 import requests
 import re
+import json
+from src.wallet_portfolio import get_token_balances_dict  # Import the wallet balance
 
 # Load environment variables
 load_dotenv()
-api_url = os.getenv("API_URL")
+VESU_API_URL = os.getenv("VESU_API_URL")
+APY_DATA_LOC = os.getenv("APY_DATA_LOCATION")
+APY_DATA_LOC_TXT = os.getenv("APY_DATA_LOCATION_TXT")
+# contract_address = os.getenv("CONTRACT_ADDRESS")
 
-# # Available tokens and their amounts
-# wallet_balance = {
-#     "USDC": 100,  # USDC balance
-#     "ETH": 1,     # ETH balance
-#     "STRK": 3000  # STRK balance
-# }
 
 async def fetch_investment_options(api_url):
     if not api_url:
@@ -22,7 +21,7 @@ async def fetch_investment_options(api_url):
         return []
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.get(api_url)
             response.raise_for_status()
             data = response.json()
@@ -85,7 +84,15 @@ async def fetch_investment_options(api_url):
                     "risk_rating": risk_rating,
                 }
                 investment_options.append(option)
+       # ✅ Save investment options in JSON format (structured)
+        with open(APY_DATA_LOC, "w", encoding="utf-8") as file:
+            json.dump(investment_options, file, indent=4)
 
+        # ✅ Save investment options in TXT format (readable)
+        with open(APY_DATA_LOC_TXT, "w", encoding="utf-8") as file:
+            for option in investment_options:
+                file.write(f"Pool: {option['pool_name']}, Asset: {option['asset']}, "
+                           f"APY: {option['net_apy']:.4%}, Risk: {option['risk_rating']}\n")
         return investment_options
 
     except httpx.HTTPStatusError as e:
@@ -97,8 +104,20 @@ async def fetch_investment_options(api_url):
 
     return []
 
-async def find_best_investments(wallet_balance):
-    investments = await fetch_investment_options(api_url)
+async def find_best_investments(contract_address, apy_data_loc=None, vesu_api_url=None):
+
+    wallet_balance = await get_token_balances_dict(contract_address)
+
+    investments = []  # ✅ Initialize investments to avoid 'UnboundLocalError'
+    if apy_data_loc:
+        try:
+            with open("src/data/investment_options.json", "r", encoding="utf-8") as file:
+                investments = json.load(file)
+        except FileNotFoundError:
+            print("❌ Investment options file not found.")
+
+    elif vesu_api_url:   
+        investments = await fetch_investment_options(vesu_api_url)
 
     if not investments:
         print("⚠️ No investment options fetched.")
@@ -113,14 +132,14 @@ async def find_best_investments(wallet_balance):
     # Get top 3 strategies per asset
     top_strategies = []
     for asset, strategies in investment_by_asset.items():
-        sorted_strategies = sorted(strategies, key=lambda x: x["net_apy"], reverse=True)[:3]
+        sorted_strategies = sorted(strategies, key=lambda x: x["net_apy"], reverse=True)[:5]
 
-        # Total balance available for this asset
-        total_balance = wallet_balance[asset]
+        # # Total balance available for this asset
+        # total_balance = wallet_balance[asset]
 
-        for strategy in sorted_strategies:
-            strategy["investment_amount"] = total_balance / len(sorted_strategies) if sorted_strategies else 0
-            strategy["allocation_percentage"] = (strategy["investment_amount"] / total_balance) * 100 if total_balance else 0
+        # for strategy in sorted_strategies:
+        #     strategy["investment_amount"] = total_balance / len(sorted_strategies) if sorted_strategies else 0
+        #     strategy["allocation_percentage"] = (strategy["investment_amount"] / total_balance) * 100 if total_balance else 0
 
         top_strategies.extend(sorted_strategies)
 
@@ -135,8 +154,23 @@ async def find_best_investments(wallet_balance):
             f" and a {strategy['risk_rating']} risk rating\n"
         )
 
-    return output
 
-# # Run the script
-# formatted_strategies = asyncio.run(find_best_investments(wallet_balance))
+    # Format output
+    if not top_strategies:
+        return json.dumps({"error": "❌ No valid investment opportunities found."}, indent=4)
+   # Convert APY values to percentage format
+    for strategy in top_strategies:
+        strategy["net_apy"] = f"{strategy['net_apy'] * 100:.2f}%"  # Convert to percentage
+
+    # Convert to JSON format
+    json_output = json.dumps(top_strategies, indent=4)
+    # Return the JSON output
+    return json_output, wallet_balance
+
+    # return output
+
+# # # Run the script
+# formatted_strategies = asyncio.run(find_best_investments(wallet_balance, APY_DATA_LOC, None))
 # print(formatted_strategies)
+
+# print(APY_DATA_LOC)

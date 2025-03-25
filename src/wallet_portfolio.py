@@ -2,9 +2,12 @@ import asyncio
 from typing import Dict
 from starknet_py.contract import Contract
 from starknet_py.net.full_node_client import FullNodeClient
+from dotenv import load_dotenv
+import os
 
 # ✅ Starknet RPC provider (Testnet / Mainnet)
-NODE_URL = "https://starknet-mainnet.public.blastapi.io/rpc/v0_7"  
+load_dotenv()
+NODE_URL = os.getenv("STARKNET_RPC_PROVIDER")  
 client = FullNodeClient(node_url=NODE_URL)
 
 # ✅ List of ERC-20 token contract addresses
