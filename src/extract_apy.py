@@ -79,7 +79,7 @@ async def fetch_investment_options(api_url):
                 option = {
                     "name": asset.get("name", "Unknown"),
                     "asset": asset.get("symbol", "Unknown"),
-                    "net_apy": net_apy,
+                    "net_apy": net_apy*100,
                     "pool_name": asset.get("vToken", {}).get("name", "Unknown"),
                     "risk_rating": risk_rating,
                 }
@@ -87,12 +87,13 @@ async def fetch_investment_options(api_url):
        # ✅ Save investment options in JSON format (structured)
         with open(APY_DATA_LOC, "w", encoding="utf-8") as file:
             json.dump(investment_options, file, indent=4)
-
+        print("✅ Investment options JSON file saved successfully.")
         # ✅ Save investment options in TXT format (readable)
         with open(APY_DATA_LOC_TXT, "w", encoding="utf-8") as file:
             for option in investment_options:
                 file.write(f"Pool: {option['pool_name']}, Asset: {option['asset']}, "
                            f"APY: {option['net_apy']:.4%}, Risk: {option['risk_rating']}\n")
+        print("✅ Investment options TXT file saved successfully.")
         return investment_options
 
     except httpx.HTTPStatusError as e:
@@ -160,7 +161,7 @@ async def find_best_investments(contract_address, apy_data_loc=None, vesu_api_ur
         return json.dumps({"error": "❌ No valid investment opportunities found."}, indent=4)
    # Convert APY values to percentage format
     for strategy in top_strategies:
-        strategy["net_apy"] = f"{strategy['net_apy'] * 100:.2f}%"  # Convert to percentage
+        strategy["net_apy"] = f"{strategy['net_apy']:.2f}%"  # Convert to percentage
 
     # Convert to JSON format
     json_output = json.dumps(top_strategies, indent=4)
