@@ -111,7 +111,7 @@ async def crypto_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Cryptocurrency is a digital or virtual currency that uses cryptography for security and operates on decentralized networks based on blockchain technology.")
 
 
-async def handle_wallet_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles wallet-related queries while considering previous conversation context."""
     text = update.message.text.strip().lower()
     chat_id = update.message.chat.id
@@ -138,16 +138,17 @@ async def handle_wallet_query(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         # Construct chatbot prompt with previous messages
         full_prompt = (
-            f"I am sharing our previous conversation here:\n\n"
-            f"Previous conversation:\n{previous_conversation}\n\n"
-            f"Use this only if the user is referring to past messages. Otherwise, answer only the current query.\n"
+            # f"I am sharing our previous conversation here:\n\n"
+            # f"Previous conversation:\n{previous_conversation}\n\n"
+            # f"Use this only if the user is referring to past messages. Otherwise, answer only the current query.\n"
             f"User's request: {text}\n\n"
-            f"Wallet Address: {contract_address}\n\n"
-            f"In case the user asks about the wallet balance, here is the wallet balance: {wallet_balance}\n\n"
-            f"In case the user is asking about investment options: use thus {prompt_template}\n\n"
+            # f"Wallet Address: {contract_address}\n\n"
+            # f"In case the user asks about the wallet balance, here is the wallet balance: {wallet_balance}\n\n"
+            f"In case the user is asking about investment options: use the following {prompt_template}. Else just respond with  \n\n"
             f"Bot:"
         )
-
+    # ✅ Show "typing..." in the background without blocking execution
+        asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
         logger.info(f"[Wallet Query] {username}: {update.message.text}")
 
         # try:
@@ -161,57 +162,63 @@ async def handle_wallet_query(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         # Generate the response
         response = investment_agent.invoke(full_prompt)
+        # response = entire_response["result"].split("point):", 1)[-1].strip()
+
         print("🤖 Investment Strategy:", response)
 
         # Save and send response
         save_message(chat_id, "TyrionAI", "bot", response)
         await update.message.reply_text(response)
-        return
+        save_message(chat_id, "TyrionAI", "bot", response)
+        logger.info(f"[Bot] TyrionAI: {response}")
 
-# Function to handle user messages
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
-        logger.warning("Received an update without a text message.")
-        return
+        for part in split_message(response):
+            await update.message.reply_text(part)
+
+# # Function to handle user messages
+# async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     if not update.message or not update.message.text:
+#         logger.warning("Received an update without a text message.")
+#         return
     
-    text = update.message.text
-    chat_id = update.message.chat.id
-    user = update.message.from_user
-    username = user.username or user.first_name or user.last_name or f"User_{user.id}"
+#     text = update.message.text
+#     chat_id = update.message.chat.id
+#     user = update.message.from_user
+#     username = user.username or user.first_name or user.last_name or f"User_{user.id}"
 
-    # ✅ Show "typing..." in the background without blocking execution
-    asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
-    logger.info(f"[User] {username}: {text}")
+#     # ✅ Show "typing..." in the background without blocking execution
+#     asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
+#     logger.info(f"[User] {username}: {text}")
     
 
-    previous_conversation = get_last_messages(chat_id, limit=2)
-    save_message(chat_id, username, "user", text)
+#     previous_conversation = get_last_messages(chat_id, limit=2)
+#     save_message(chat_id, username, "user", text)
 
-    full_prompt = f"I am sharing our previous conversation here: \n\n Previous conversation: \n{previous_conversation}. \n\n Use the previous conversation to answer my question only if the user is asking a follow-up question or is referring to the previous question. Else ignore the previous conversation and answer only the current question. \n Here is the New question: {text}. \n Bot:"
-    # full_prompt = text
-    print("full prompt:", full_prompt)
-    try:
-        entire_response = chatbot.invoke({"query": full_prompt})
-        # entire_response = chatbot.process_query({"query": full_prompt})
-        response = entire_response["result"].split("point):", 1)[-1].strip()
-        retrieved_docs = entire_response.get("source_documents", [])  # List of retrieved documents
-        # ✅ Print retrieved docs
-        if retrieved_docs:
-            print("\n========== RETRIEVED CONTEXT ==========")
-            for idx, doc in enumerate(retrieved_docs, start=1):
-                print(f"🔹 Document {idx}: {doc.page_content[:500]}")  # Print first 500 chars
-            print("=================================")
-        else:
-            print("\n⚠️ No relevant documents retrieved!\n")    
-    except Exception as e:
-        logger.error(f"Chatbot error: {e}")
-        response = "Sorry, something went wrong while processing your request."
+#     full_prompt = f"I am sharing our previous conversation here: \n\n Previous conversation: \n{previous_conversation}. \n\n Use the previous conversation to answer my question only if the user is asking a follow-up question or is referring to the previous question. Else ignore the previous conversation and answer only the current question. \n Here is the New question: {text}. \n Bot:"
+#     # full_prompt = text
+#     print("full prompt:", full_prompt)
+#     try:
+#         entire_response = chatbot.invoke({"query": full_prompt})
+#         # entire_response = chatbot.process_query({"query": full_prompt})
+#         response = entire_response["result"].split("point):", 1)[-1].strip()
+#         retrieved_docs = entire_response.get("source_documents", [])  # List of retrieved documents
+#         # ✅ Print retrieved docs
+#         if retrieved_docs:
+#             print("\n========== RETRIEVED CONTEXT ==========")
+#             for idx, doc in enumerate(retrieved_docs, start=1):
+#                 print(f"🔹 Document {idx}: {doc.page_content[:500]}")  # Print first 500 chars
+#             print("=================================")
+#         else:
+#             print("\n⚠️ No relevant documents retrieved!\n")    
+#     except Exception as e:
+#         logger.error(f"Chatbot error: {e}")
+#         response = "Sorry, something went wrong while processing your request."
     
-    save_message(chat_id, "TyrionAI", "bot", response)
-    logger.info(f"[Bot] TyrionAI: {response}")
+#     save_message(chat_id, "TyrionAI", "bot", response)
+#     logger.info(f"[Bot] TyrionAI: {response}")
 
-    for part in split_message(response):
-        await update.message.reply_text(part)
+#     for part in split_message(response):
+#         await update.message.reply_text(part)
 
 
 
@@ -236,7 +243,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("starknet", starknet_command))
     app.add_handler(CommandHandler("staking", staking_command))
     app.add_handler(CommandHandler("crypto", crypto_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_wallet_query))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     logger.info("Polling for updates...")
     app.run_polling(poll_interval=1)  # Faster response for interval =1 
