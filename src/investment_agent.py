@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 from langchain_ollama import OllamaLLM  # Ensure you have LangChain installed
 from src.extract_apy import find_best_investments  # Import the async function
 from src.wallet_portfolio import get_token_balances_dict  # Import the wallet balance
+from src.investment_model import InvestmentModel
+
+
 # Select the Ollama model (DeepSeek or any other available model)
 selected_model = "deepseek-r1"  # DeepSeek model
 

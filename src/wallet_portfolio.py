@@ -15,7 +15,7 @@ PORTFOLIO_TOKENS = {
     "USDC": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
     "ETH": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
     "STRK": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-    "XSTRK": "0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a",
+    "xSTRK": "0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a",
     "USDT": "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
     "ZEND": "0x02a28036ec5007c05c5611281a7d740c71a26d0305f7e9a4fa2f751d252a9f0d",
     "WBTC": "0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac",
@@ -41,7 +41,7 @@ TOKEN_DECIMALS = {
     "USDC": 6,   # USDC usually has 6 decimals
     "ETH": 18,   # ETH has 18 decimals
     "STRK": 18,  # STRK has 18 decimals
-    "XSTRK": 18,  # XSTRK has 18 decimals
+    "xSTRK": 18,  # XSTRK has 18 decimals
     "USDT": 6,   # USDT usually has 6 decimals
     "ZEND": 18,  # ZEND has 18 decimals
     "WBTC": 8,   # WBTC usually has 8 decimals
