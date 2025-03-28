@@ -19,22 +19,26 @@ def prioritize_assets(df):
     return df.sort_values(by=["risk_priority", "net_apy"], ascending=[True, False])
 
 
-def adjust_allocation_percentages(asset_allocations):
-    """Ensures the total percentage allocation for an asset sums to exactly 100%."""
+def adjust_allocation_percentages(asset_allocations, balance):
+    """Ensures the total allocated percentage sums to 100% by adjusting the highest APY pool."""
     total_percentage = sum(pool["% allocation"] for pool in asset_allocations)
+
     if total_percentage != 100.0:
         difference = 100.0 - total_percentage
-        asset_allocations[0]["% allocation"] += difference  # Adjust the first pool
+        best_pool = max(asset_allocations, key=lambda p: p["net_apy"])
+        best_pool["% allocation"] += difference
+        best_pool["allocated_amount"] += (difference / 100) * balance
+
     return asset_allocations
 
 
 def allocate_assets(data, user_assets, risk_profile="balanced"):
     """
     Allocates 100% of each asset according to the risk profile, ensuring:
-    1. All funds go to the highest APY pool in the allowed risk category.
-    2. Medium-risk pools are skipped if a better low-risk pool exists.
-    3. High-risk pools are skipped if a better medium-risk pool exists.
-    4. Duplicates are merged into a single entry per pool.
+    ✅ Full allocation of all funds.
+    ✅ Prioritization of highest-APY pools.
+    ✅ Avoidance of redundant medium/high-risk pools if a better lower-risk option exists.
+    ✅ Handling of rounding errors.
     """
     df = pd.DataFrame(data)
     df = prioritize_assets(df)
@@ -45,21 +49,25 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
     for asset, balance in user_assets.items():
         asset_allocations = {}
 
-        # Get the best pool for each risk category
+        # Identify the best low & medium-risk pools for comparison
         best_low_risk_pool = None
         best_medium_risk_pool = None
 
         if "low" in risk_groups.groups:
             low_risk_assets = risk_groups.get_group("low")
             best_low_risk_pool = low_risk_assets[low_risk_assets["asset"] == asset].nlargest(1, "net_apy")
+
             if not best_low_risk_pool.empty:
                 best_low_risk_pool = best_low_risk_pool.iloc[0]
 
         if "medium" in risk_groups.groups:
             medium_risk_assets = risk_groups.get_group("medium")
             best_medium_risk_pool = medium_risk_assets[medium_risk_assets["asset"] == asset].nlargest(1, "net_apy")
+
             if not best_medium_risk_pool.empty:
                 best_medium_risk_pool = best_medium_risk_pool.iloc[0]
+
+        total_allocated = 0  # Track total allocated amount for full distribution
 
         for risk, percentage in allocation.items():
             if percentage > 0 and risk in risk_groups.groups:
@@ -69,7 +77,7 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
                 if not best_pool.empty:
                     best_pool = best_pool.iloc[0]
 
-                    # **Handle Edge Cases**
+                    # **Skip medium risk if a better low-risk option exists**
                     if (
                         risk == "medium"
                         and best_low_risk_pool is not None
@@ -82,6 +90,7 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
                         )
                         best_pool = best_low_risk_pool  # Replace with better low-risk option
 
+                    # **Skip high risk if a better medium-risk option exists**
                     if (
                         risk == "high"
                         and best_medium_risk_pool is not None
@@ -95,23 +104,30 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
                         best_pool = best_medium_risk_pool  # Replace with better medium-risk option
 
                     allocated_amount = percentage * balance
-                    allocated_percentage = percentage * 100
+                    total_allocated += allocated_amount  # Track total allocation
 
                     # **Merge duplicate pools**
                     if best_pool["pool_name"] in asset_allocations:
                         asset_allocations[best_pool["pool_name"]]["allocated_amount"] += allocated_amount
-                        asset_allocations[best_pool["pool_name"]]["% allocation"] += allocated_percentage
+                        asset_allocations[best_pool["pool_name"]]["% allocation"] += percentage * 100
                     else:
                         asset_allocations[best_pool["pool_name"]] = {
                             "pool": best_pool["pool_name"],
                             "allocated_amount": allocated_amount,
-                            "% allocation": allocated_percentage,
+                            "% allocation": percentage * 100,
                             "net_apy": best_pool["net_apy"],
                             "risk": best_pool["risk_rating"]
                         }
 
+        # **Handle any unallocated funds due to rounding**
+        rounding_error = balance - total_allocated
+        if rounding_error > 0 and asset_allocations:
+            best_pool = max(asset_allocations.values(), key=lambda p: p["net_apy"])
+            best_pool["allocated_amount"] += rounding_error
+            best_pool["% allocation"] += (rounding_error / balance) * 100
+
         if asset_allocations:
-            investment_plan[asset] = adjust_allocation_percentages(list(asset_allocations.values()))
+            investment_plan[asset] = adjust_allocation_percentages(list(asset_allocations.values()), balance)
 
     return investment_plan
 

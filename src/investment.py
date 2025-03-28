@@ -16,14 +16,14 @@ APY_DATA_LOC = os.getenv("APY_DATA_LOCATION")
 contract_address = os.getenv("CONTRACT_ADDRESS")
 
 
-async def create_investment_agent(contract_address: str):
+async def create_filters_bot(contract_address: str):
   # Initialize OllamaLLM with system instructions
-  investment_agent = OllamaLLM(
+  filters_bot = OllamaLLM(
       model=selected_model,
       base_url="http://localhost:11434",  # Local Ollama server
       temperature=0.1,  # Lower temperature for more deterministic responses
   )
-
+    
 
 
 

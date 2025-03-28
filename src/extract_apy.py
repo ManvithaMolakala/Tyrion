@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import requests
 import re
 import json
-from src.wallet_portfolio import get_token_balances_dict  # Import the wallet balance
+from wallet_portfolio import get_token_balances_dict  # Import the wallet balance
 
 # Load environment variables
 load_dotenv()
@@ -78,7 +78,7 @@ async def fetch_investment_options(api_url):
                 # Create investment option
                 option = {
                     "name": asset.get("name", "Unknown"),
-                    "asset": asset.get("symbol", "Unknown"),
+                    "asset": asset.get("symbol", "Unknown").upper(),
                     "net_apy": net_apy*100,
                     "pool_name": asset.get("vToken", {}).get("name", "Unknown"),
                     "risk_rating": risk_rating,

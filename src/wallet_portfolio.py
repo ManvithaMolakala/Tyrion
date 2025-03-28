@@ -15,11 +15,11 @@ PORTFOLIO_TOKENS = {
     "USDC": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
     "ETH": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
     "STRK": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-    "xSTRK": "0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a",
+    "XSTRK": "0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a",
     "USDT": "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
     "ZEND": "0x02a28036ec5007c05c5611281a7d740c71a26d0305f7e9a4fa2f751d252a9f0d",
     "WBTC": "0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac",
-    "nstSTRK": "0x03e3c4b9e256b07ba29a35e58fc556ac55fc7cfeb6dab85717755ec5e712b8d5",
+    "NSTSTRK": "0x03e3c4b9e256b07ba29a35e58fc556ac55fc7cfeb6dab85717755ec5e712b8d5",
     "DAI": "0x00da114221cb83fa859dbdb4c44beeaa0bb37c7537ad5ae66fe5e0efd20e6eb3",
     "EKUBO": "0x075afe6402ad5a5c20dd25e10ec3b3986acaa647b77e4ae24b0cbc9a54a27a87",
     "LUSD": "0x070a76fd48ca0ef910631754d77dd822147fe98a569b826ec85e3c33fde586ac",
@@ -27,9 +27,9 @@ PORTFOLIO_TOKENS = {
     "WSTETH": "0x0057912720381af14b0e5c87aa4718ed5e527eab60b3801ebf702ab09139e38b",
     "UNI": "0x049210ffc442172463f3177147c1aeaa36c51d152c1b0630f2364c300d4f48ee",
     "NSTRK": "0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd17",
-    "rETH": "0x0319111a5037cbec2b3e638cc34a3474e2d2608299f3e62866e9cc683208c610",
+    "RETH": "0x0319111a5037cbec2b3e638cc34a3474e2d2608299f3e62866e9cc683208c610",
     "SWAY": "0x04480b2ab159bd1da5e2ba802d1ffb2d8ba076a675dc445435fca19b1e360f21",
-    "sSTRK": "0x0260c02fd6942c788b8905d2c1b98b5a98fffd2ec0dfb013aa4b148781e269b6",
+    "SSTRK": "0x0260c02fd6942c788b8905d2c1b98b5a98fffd2ec0dfb013aa4b148781e269b6",
     "BRRR": "0x67737cbee9be3e3042ca86ef41598af7cc36fa6e109193c165b854de07d1df7",
     "TONY":"0x5f467ace847d1cbc6d1efea978752a8b4549fec043286fec1289d19b8c57e67",
     "AKU": "0x137dfca7d96cdd526d13a63176454f35c691f55837497448fad352643cfe4d4",
@@ -41,11 +41,11 @@ TOKEN_DECIMALS = {
     "USDC": 6,   # USDC usually has 6 decimals
     "ETH": 18,   # ETH has 18 decimals
     "STRK": 18,  # STRK has 18 decimals
-    "xSTRK": 18,  # XSTRK has 18 decimals
+    "XSTRK": 18,  # XSTRK has 18 decimals
     "USDT": 6,   # USDT usually has 6 decimals
     "ZEND": 18,  # ZEND has 18 decimals
     "WBTC": 8,   # WBTC usually has 8 decimals
-    "nstSTRK": 18,  # nstSTRK has 18 decimals
+    "NSTSTRK": 18,  # nstSTRK has 18 decimals
     "DAI": 18,  # DAI has 18 decimals
     "LUSD": 18,  # LUSD has 18 decimals
     "LORD": 18,  # LORD has 18 decimals
@@ -53,10 +53,10 @@ TOKEN_DECIMALS = {
     "WSTETH": 18,  # WETH has 18 decimals
     "UNI": 18,  # UNI has 18 decimals
     "NSTRK": 18,  # NSTRK has 18 decimals
-    "rETH": 18,  # rETH has 18 decimals
+    "RETH": 18,  # rETH has 18 decimals
     "SWAY": 18,  # SWAY has 18 decimals
     "vSTRK": 18,  # vSTRK has 18 decimals
-    "sSTRK": 18,  # sSTRK has 18 decimals
+    "SSTRK": 18,  # sSTRK has 18 decimals
     "BRRR": 18,  # BRRR has 18 decimals
     "TONY": 18,  # TONY has 18 decimals
     "AKU": 18,  # AKU has 18 decimals
@@ -74,6 +74,7 @@ async def fetch_balance(token_name: str, token_address: str, contract_address: i
         human_balance = balance / (10 ** decimals)
 
         return token_name, human_balance
+    
     except Exception as e:
         print(f"Error fetching {token_name} balance: {e}")
         return token_name, 0.0
