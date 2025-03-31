@@ -1,14 +1,15 @@
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.chatbot_ollama import create_chatbot
-from src.wallet_portfolio import get_token_balances, get_token_balances_dict
-from src.extract_apy import find_best_investments
+from src.wallet_portfolio import get_token_balances_dict
+from src.extract_filters import classify_risk, output_bot
+from src.investment_model import allocate_assets
+import json
 import logging
 import os
 import sqlite3
 import re
 import asyncio
-from src.investment_agent import create_investment_agent
 
 # ✅ Fix event loop issue
 try:
@@ -74,7 +75,7 @@ def get_last_messages(chat_id, limit=2):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT role, message FROM messages 
-        WHERE chat_id = ? 
+        WHERE chat_id = ? AND role = 'user'
         ORDER BY timestamp DESC 
         LIMIT ?
     """, (chat_id, limit))
@@ -119,61 +120,83 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = user.username or user.first_name or user.last_name or f"User_{user.id}"
 
     # Retrieve previous messages for context
-    previous_conversation = get_last_messages(chat_id, limit=2)
+    previous_query = get_last_messages(chat_id, limit=1)
+    print(f"Previous queries: {previous_query}")  # Debugging output
+
     save_message(chat_id, username, "user", text)
+    finalprompt = f"""previous query: {previous_query} \n current_statement{text}"""
 
-    wallet_keywords = {"wallet", "balance", "portfolio", "funds", "invest", "investment", "strategy"}
-    if any(keyword in text for keyword in wallet_keywords):
-        # Extract Starknet contract addresses (66-character hex or large decimal numbers)
-        pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
-        contract_addresses = re.findall(pattern, text)
+    # wallet_keywords = {"wallet", "balance", "portfolio", "funds", "invest", "investment", "strategy"}
+    # Extract Starknet contract addresses (66-character hex or large decimal numbers)
+    pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
+    contract_addresses = re.findall(pattern, finalprompt)
+    print(finalprompt)
+    if not contract_addresses:
+        await update.message.reply_text("⚠️ No valid Starknet address found in your message.")
+        return
+    
+    async def get_investment_plan(contract_address: str, statement: str)->str:
+        risk_profile_response = classify_risk(statement, model_name="deepseek-r1")
+        # Create a regex pattern that matches any of the risk profile names (case-insensitive)
+        pattern = r"\b(risk averse|balanced|aggressive|none)\b"
+        
+        match = re.search(pattern, risk_profile_response, re.IGNORECASE)
+        
+        if match:
+            risk_profile = match.group(0).capitalize()  # Return the matched profile in proper case
+            risk_profile_user = risk_profile
+        else:
+            risk_profile = None  # No risk profile found
 
-        if not contract_addresses:
-            await update.message.reply_text("⚠️ No valid Starknet address found in your message.")
-            return
+        user_assets = await(get_token_balances_dict(contract_address))
+        if risk_profile == "None":
+            risk_profile = "balanced"
+            risk_profile_user = "Balanced. Since you have not mentioned your risk apetite, investment suggestion is provided to maintain a balanced portfolio."
 
-        contract_address = contract_addresses[0]  # Use the first valid address
-        # Create the investment agent
-        investment_agent, prompt_template, wallet_balance = await create_investment_agent(contract_address)
+        investment_plan = allocate_assets(user_assets, risk_profile)  # Allocate fundss
+        investment_plan_json = json.dumps(investment_plan, indent=4)
+        investment_plan_text = "Investment Strategy Overview:\n\n"
+    
+        for asset, allocations in investment_plan.items():
+            investment_plan_text += f"{asset} Allocation:\n"
+            for allocation in allocations:
+                investment_plan_text += (
+                    f"- Pool: {allocation['pool']}\n"
+                    f"- Allocated Amount: {allocation['allocated_amount']}\n"
+                    f"- Percentage Allocation: {allocation['% allocation']}%\n"
+                    f"- Net APY: {allocation['net_apy']}%\n"
+                    f"- Risk Level: {allocation['risk'].capitalize()}\n\n"
+                )
+    
+        # Print the structured investment plan
+        return investment_plan_text, user_assets, risk_profile_user
+    contract_address = contract_addresses[0]  # Use the first valid address
+    invest_plan, user_assets, risk_profile_user = await get_investment_plan(contract_address, finalprompt)
+    # Construct chatbot prompt with previous messages
+    # full_prompt = (
+    #     # f"I am sharing our previous conversation here:\n\n"
+    #     # f"Previous conversation:\n{previous_conversation}\n\n"
+    #     # f"Use this only if the user is referring to past messages. Otherwise, answer only the current query.\n"
+    #     f"User's request: {text}\n\n"
+    #     # f"Wallet Address: {contract_address}\n\n"
+    #     # f"In case the user asks about the wallet balance, here is the wallet balance: {wallet_balance}\n\n"
+    #     f"In case the user is asking about investment options: use the following {prompt_template}. Else just respond with  \n\n"
+    #     f"Bot:"
+    # )
 
-        # Construct chatbot prompt with previous messages
-        full_prompt = (
-            # f"I am sharing our previous conversation here:\n\n"
-            # f"Previous conversation:\n{previous_conversation}\n\n"
-            # f"Use this only if the user is referring to past messages. Otherwise, answer only the current query.\n"
-            f"User's request: {text}\n\n"
-            # f"Wallet Address: {contract_address}\n\n"
-            # f"In case the user asks about the wallet balance, here is the wallet balance: {wallet_balance}\n\n"
-            f"In case the user is asking about investment options: use the following {prompt_template}. Else just respond with  \n\n"
-            f"Bot:"
-        )
     # ✅ Show "typing..." in the background without blocking execution
-        asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
-        logger.info(f"[Wallet Query] {username}: {update.message.text}")
+    asyncio.create_task(context.bot.send_chat_action(chat_id=chat_id, action="typing"))
+    logger.info(f"[Wallet Query] {username}: {update.message.text}")
 
-        # try:
-        #     # Call function to fetch balances (replace with actual API call)
-        #     wallet_balance = await get_token_balances_dict(contract_address)
-        #     response = wallet_balance or "❌ Unable to fetch wallet balance at the moment."
-        # except Exception as e:
-        #     logger.error(f"Error fetching wallet balance: {e}")
-        #     response = "❌ Error retrieving wallet balance."
+    # # Generate the response
+    # response = investment_agent.invoke(full_prompt)
+    # # response = entire_response["result"].split("point):", 1)[-1].strip()
+    response = f"Your assets: {user_assets}\n \nYour risk profile: {risk_profile_user} \n \n {invest_plan}"
+    # Save and send response
+    save_message(chat_id, "TyrionAI", "bot", response)
+    await update.message.reply_text(response)
+    logger.info(f"[Bot] TyrionAI: {response}")
 
-
-        # Generate the response
-        response = investment_agent.invoke(full_prompt)
-        # response = entire_response["result"].split("point):", 1)[-1].strip()
-
-        print("🤖 Investment Strategy:", response)
-
-        # Save and send response
-        save_message(chat_id, "TyrionAI", "bot", response)
-        await update.message.reply_text(response)
-        save_message(chat_id, "TyrionAI", "bot", response)
-        logger.info(f"[Bot] TyrionAI: {response}")
-
-        for part in split_message(response):
-            await update.message.reply_text(part)
 
 # # Function to handle user messages
 # async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

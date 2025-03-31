@@ -1,6 +1,9 @@
 import json
 import pandas as pd
-
+import os
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables
+APY_DATA_LOC = os.getenv("APY_DATA_LOCATION")
 
 def get_allocation(risk_profile):
     """Returns risk allocation percentages based on the chosen risk profile."""
@@ -9,7 +12,7 @@ def get_allocation(risk_profile):
         "balanced": {"high": 0.1, "medium": 0.4, "low": 0.5},
         "aggressive": {"high": 0.3, "medium": 0.4, "low": 0.3},
     }
-    return risk_allocations.get(risk_profile.lower(), risk_allocations["balanced"])
+    return risk_allocations.get(risk_profile.strip().lower(), risk_allocations["balanced"])
 
 
 def prioritize_assets(df):
@@ -32,7 +35,7 @@ def adjust_allocation_percentages(asset_allocations, balance):
     return asset_allocations
 
 
-def allocate_assets(data, user_assets, risk_profile="balanced"):
+def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
     """
     Allocates 100% of each asset according to the risk profile, ensuring:
     ✅ Full allocation of all funds.
@@ -40,6 +43,9 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
     ✅ Avoidance of redundant medium/high-risk pools if a better lower-risk option exists.
     ✅ Handling of rounding errors.
     """
+    with open(file_path, "r") as file:
+        data = json.load(file)
+    
     df = pd.DataFrame(data)
     df = prioritize_assets(df)
     allocation = get_allocation(risk_profile)
@@ -132,12 +138,6 @@ def allocate_assets(data, user_assets, risk_profile="balanced"):
     return investment_plan
 
 
-# **Load investment options from a JSON file**
-def load_investment_options(file_path):
-    """Loads investment options from a JSON file."""
-    with open(file_path, "r") as file:
-        return json.load(file)
-
 
 # # **Example User Assets**
 # user_assets = {
@@ -146,10 +146,7 @@ def load_investment_options(file_path):
 #     "STRK": 10000
 # }
 
-# # **Load Data and Allocate Assets**
-# investment_data = load_investment_options("src/data/investment_options.json")  # Load JSON file
-
-# investment_plan = allocate_assets(investment_data, user_assets, risk_profile="aggressive")  # Allocate funds
+# investment_plan = allocate_assets(user_assets, risk_profile="Risk averse")  # Allocate funds
 
 # # **Print Structured Investment Plan**
 # print(json.dumps(investment_plan, indent=4))

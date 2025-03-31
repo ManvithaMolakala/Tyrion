@@ -105,73 +105,73 @@ async def fetch_investment_options(api_url):
 
     return []
 
-async def find_best_investments(contract_address, apy_data_loc=None, vesu_api_url=None):
+# async def find_best_investments(contract_address, apy_data_loc=None, vesu_api_url=None):
 
-    wallet_balance = await get_token_balances_dict(contract_address)
+#     wallet_balance = await get_token_balances_dict(contract_address)
 
-    investments = []  # ✅ Initialize investments to avoid 'UnboundLocalError'
-    if apy_data_loc:
-        try:
-            with open("src/data/investment_options.json", "r", encoding="utf-8") as file:
-                investments = json.load(file)
-        except FileNotFoundError:
-            print("❌ Investment options file not found.")
+#     investments = []  # ✅ Initialize investments to avoid 'UnboundLocalError'
+#     if apy_data_loc:
+#         try:
+#             with open("src/data/investment_options.json", "r", encoding="utf-8") as file:
+#                 investments = json.load(file)
+#         except FileNotFoundError:
+#             print("❌ Investment options file not found.")
 
-    elif vesu_api_url:   
-        investments = await fetch_investment_options(vesu_api_url)
+#     elif vesu_api_url:   
+#         investments = await fetch_investment_options(vesu_api_url)
 
-    if not investments:
-        print("⚠️ No investment options fetched.")
-        return "❌ No valid investment opportunities found."
+#     if not investments:
+#         print("⚠️ No investment options fetched.")
+#         return "❌ No valid investment opportunities found."
 
-    # Group investments by asset
-    investment_by_asset = {}
-    for inv in investments:
-        if inv["asset"] in wallet_balance:
-            investment_by_asset.setdefault(inv["asset"], []).append(inv)
+#     # Group investments by asset
+#     investment_by_asset = {}
+#     for inv in investments:
+#         if inv["asset"] in wallet_balance:
+#             investment_by_asset.setdefault(inv["asset"], []).append(inv)
 
-    # Get top 3 strategies per asset
-    top_strategies = []
-    for asset, strategies in investment_by_asset.items():
-        sorted_strategies = sorted(strategies, key=lambda x: x["net_apy"], reverse=True)[:5]
+#     # Get top 3 strategies per asset
+#     top_strategies = []
+#     for asset, strategies in investment_by_asset.items():
+#         sorted_strategies = sorted(strategies, key=lambda x: x["net_apy"], reverse=True)[:5]
 
-        # # Total balance available for this asset
-        # total_balance = wallet_balance[asset]
+#         # # Total balance available for this asset
+#         # total_balance = wallet_balance[asset]
 
-        # for strategy in sorted_strategies:
-        #     strategy["investment_amount"] = total_balance / len(sorted_strategies) if sorted_strategies else 0
-        #     strategy["allocation_percentage"] = (strategy["investment_amount"] / total_balance) * 100 if total_balance else 0
+#         # for strategy in sorted_strategies:
+#         #     strategy["investment_amount"] = total_balance / len(sorted_strategies) if sorted_strategies else 0
+#         #     strategy["allocation_percentage"] = (strategy["investment_amount"] / total_balance) * 100 if total_balance else 0
 
-        top_strategies.extend(sorted_strategies)
+#         top_strategies.extend(sorted_strategies)
 
-    # Format output
-    if not top_strategies:
-        return "❌ No valid investment opportunities found."
+#     # Format output
+#     if not top_strategies:
+#         return "❌ No valid investment opportunities found."
 
-    output = "\nTop Investment Options:\n"
-    for i, strategy in enumerate(top_strategies, start=1):
-        output += (
-            f" The Pool,'{strategy['pool_name']}' with {strategy['net_apy']:.4%} APY for {strategy['name']} ({strategy['asset']})"
-            f" and a {strategy['risk_rating']} risk rating\n"
-        )
+#     output = "\nTop Investment Options:\n"
+#     for i, strategy in enumerate(top_strategies, start=1):
+#         output += (
+#             f" The Pool,'{strategy['pool_name']}' with {strategy['net_apy']:.4%} APY for {strategy['name']} ({strategy['asset']})"
+#             f" and a {strategy['risk_rating']} risk rating\n"
+#         )
 
 
-    # Format output
-    if not top_strategies:
-        return json.dumps({"error": "❌ No valid investment opportunities found."}, indent=4)
-   # Convert APY values to percentage format
-    for strategy in top_strategies:
-        strategy["net_apy"] = f"{strategy['net_apy']:.2f}%"  # Convert to percentage
+#     # Format output
+#     if not top_strategies:
+#         return json.dumps({"error": "❌ No valid investment opportunities found."}, indent=4)
+#    # Convert APY values to percentage format
+#     for strategy in top_strategies:
+#         strategy["net_apy"] = f"{strategy['net_apy']:.2f}%"  # Convert to percentage
 
-    # Convert to JSON format
-    json_output = json.dumps(top_strategies, indent=4)
-    # Return the JSON output
-    return json_output, wallet_balance
+#     # Convert to JSON format
+#     json_output = json.dumps(top_strategies, indent=4)
+#     # Return the JSON output
+#     return json_output, wallet_balance
 
-    # return output
+#     # return output
 
-# # # Run the script
-# formatted_strategies = asyncio.run(find_best_investments(wallet_balance, APY_DATA_LOC, None))
-# print(formatted_strategies)
+# # # # Run the script
+# # formatted_strategies = asyncio.run(find_best_investments(wallet_balance, APY_DATA_LOC, None))
+# # print(formatted_strategies)
 
-# print(APY_DATA_LOC)
+# # print(APY_DATA_LOC)
