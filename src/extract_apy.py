@@ -1,21 +1,20 @@
-import asyncio
 import os
 import httpx
 from dotenv import load_dotenv
 import requests
 import re
 import json
-from wallet_portfolio import get_token_balances_dict  # Import the wallet balance
 
 # Load environment variables
 load_dotenv()
-VESU_API_URL = os.getenv("VESU_API_URL")
+APY_DATA_LOC_VESU = os.getenv("APY_DATA_LOCATION_VESU")
+APY_DATA_LOC_STRKFARM = os.getenv("APY_DATA_LOCATION_STRKFARM")
 APY_DATA_LOC = os.getenv("APY_DATA_LOCATION")
-APY_DATA_LOC_TXT = os.getenv("APY_DATA_LOCATION_TXT")
+
 # contract_address = os.getenv("CONTRACT_ADDRESS")
 
 
-async def fetch_investment_options(api_url):
+async def vesu_investment_options(api_url):
     if not api_url:
         print("❌ API_URL is not set. Please check your environment variables.")
         return []
@@ -77,23 +76,20 @@ async def fetch_investment_options(api_url):
 
                 # Create investment option
                 option = {
-                    "name": asset.get("name", "Unknown"),
+                    "token_name": asset.get("name", "Unknown"),
                     "asset": asset.get("symbol", "Unknown").upper(),
-                    "net_apy": net_apy*100,
-                    "pool_name": asset.get("vToken", {}).get("name", "Unknown"),
+                    "pool": asset.get("vToken", {}).get("name", "Unknown"),
+                    "apy": net_apy*100,
                     "risk_rating": risk_rating,
+                    "tvlusd": asset.get("currentUtilization", 0),
+                    "is_audited": 1,
+                    "protocol": "Vesu"
                 }
                 investment_options.append(option)
        # ✅ Save investment options in JSON format (structured)
-        with open(APY_DATA_LOC, "w", encoding="utf-8") as file:
+        with open(APY_DATA_LOC_VESU, "w", encoding="utf-8") as file:
             json.dump(investment_options, file, indent=4)
         print("✅ Investment options JSON file saved successfully.")
-        # ✅ Save investment options in TXT format (readable)
-        with open(APY_DATA_LOC_TXT, "w", encoding="utf-8") as file:
-            for option in investment_options:
-                file.write(f"Pool: {option['pool_name']}, Asset: {option['asset']}, "
-                           f"APY: {option['net_apy']:.4%}, Risk: {option['risk_rating']}\n")
-        print("✅ Investment options TXT file saved successfully.")
         return investment_options
 
     except httpx.HTTPStatusError as e:
@@ -105,73 +101,86 @@ async def fetch_investment_options(api_url):
 
     return []
 
-# async def find_best_investments(contract_address, apy_data_loc=None, vesu_api_url=None):
 
-#     wallet_balance = await get_token_balances_dict(contract_address)
+# Send a GET request to the API
+def strkfarm_investment_options(api_url):
+    response = requests.get(api_url)
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        strategies = data.get("strategies", [])
 
-#     investments = []  # ✅ Initialize investments to avoid 'UnboundLocalError'
-#     if apy_data_loc:
-#         try:
-#             with open("src/data/investment_options.json", "r", encoding="utf-8") as file:
-#                 investments = json.load(file)
-#         except FileNotFoundError:
-#             print("❌ Investment options file not found.")
+        # Extract and structure the data
+        extracted_data = []
+        for strategy in strategies:
+            pool = strategy.get("name", "N/A")
+            apy = strategy.get("apy", 0) * 100  # Convert to percentage
+            tvl = strategy.get("tvlUsd", 0)
+            risk_factor = strategy.get("riskFactor", "N/A")
+            is_audited = 1 if strategy.get("isAudited") else 0
+            asset = strategy.get("contract", [{}])[0].get("name", "N/A") if strategy.get("contract") else "N/A"
+            protocol = "Strkfarm"
 
-#     elif vesu_api_url:   
-#         investments = await fetch_investment_options(vesu_api_url)
+            extracted_data.append({
+                "asset": asset,
+                "pool": pool,
+                "apy": f"{apy:.2f}%",
+                "risk_factor": risk_factor,
+                "tvlusd": tvl,
+                "is_audited": is_audited,
+                "protocol": protocol
+            })
 
-#     if not investments:
-#         print("⚠️ No investment options fetched.")
-#         return "❌ No valid investment opportunities found."
+        # Save the extracted data to a JSON file
+        output_filename = APY_DATA_LOC_STRKFARM
+        with open(output_filename, "w") as json_file:
+            json.dump(extracted_data, json_file, indent=4)
 
-#     # Group investments by asset
-#     investment_by_asset = {}
-#     for inv in investments:
-#         if inv["asset"] in wallet_balance:
-#             investment_by_asset.setdefault(inv["asset"], []).append(inv)
+        print(f"Data successfully saved to {output_filename}")
 
-#     # Get top 3 strategies per asset
-#     top_strategies = []
-#     for asset, strategies in investment_by_asset.items():
-#         sorted_strategies = sorted(strategies, key=lambda x: x["net_apy"], reverse=True)[:5]
-
-#         # # Total balance available for this asset
-#         # total_balance = wallet_balance[asset]
-
-#         # for strategy in sorted_strategies:
-#         #     strategy["investment_amount"] = total_balance / len(sorted_strategies) if sorted_strategies else 0
-#         #     strategy["allocation_percentage"] = (strategy["investment_amount"] / total_balance) * 100 if total_balance else 0
-
-#         top_strategies.extend(sorted_strategies)
-
-#     # Format output
-#     if not top_strategies:
-#         return "❌ No valid investment opportunities found."
-
-#     output = "\nTop Investment Options:\n"
-#     for i, strategy in enumerate(top_strategies, start=1):
-#         output += (
-#             f" The Pool,'{strategy['pool_name']}' with {strategy['net_apy']:.4%} APY for {strategy['name']} ({strategy['asset']})"
-#             f" and a {strategy['risk_rating']} risk rating\n"
-#         )
+    else:
+        print(f"Failed to fetch data: {response.status_code}")
+    return extracted_data
+    # return the extracted data
 
 
-#     # Format output
-#     if not top_strategies:
-#         return json.dumps({"error": "❌ No valid investment opportunities found."}, indent=4)
-#    # Convert APY values to percentage format
-#     for strategy in top_strategies:
-#         strategy["net_apy"] = f"{strategy['net_apy']:.2f}%"  # Convert to percentage
+# Send a GET request to the API
+def endur_investment_options(api_url):
+    response = requests.get(api_url)
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        strategies = data.get("strategies", [])
 
-#     # Convert to JSON format
-#     json_output = json.dumps(top_strategies, indent=4)
-#     # Return the JSON output
-#     return json_output, wallet_balance
+        # Extract and structure the data
+        extracted_data = []
+        for strategy in strategies:
+            pool = strategy.get("name", "N/A")
+            apy = strategy.get("apy", 0) * 100  # Convert to percentage
+            tvl = strategy.get("tvlUsd", 0)
+            risk_factor = strategy.get("riskFactor", "N/A")
+            is_audited = 1 if strategy.get("isAudited") else 0
+            asset = strategy.get("contract", [{}])[0].get("name", "N/A") if strategy.get("contract") else "N/A"
+            protocol = "Strkfarm"
 
-#     # return output
+            extracted_data.append({
+                "asset": asset,
+                "pool": pool,
+                "apy": f"{apy:.2f}%",
+                "risk_factor": risk_factor,
+                "tvlusd": tvl,
+                "is_audited": is_audited,
+                "protocol": protocol
+            })
 
-# # # # Run the script
-# # formatted_strategies = asyncio.run(find_best_investments(wallet_balance, APY_DATA_LOC, None))
-# # print(formatted_strategies)
+        # Save the extracted data to a JSON file
+        output_filename = APY_DATA_LOC_STRKFARM
+        with open(output_filename, "w") as json_file:
+            json.dump(extracted_data, json_file, indent=4)
 
-# # print(APY_DATA_LOC)
+        print(f"Data successfully saved to {output_filename}")
+
+    else:
+        print(f"Failed to fetch data: {response.status_code}")
+    return extracted_data
+    # return the extracted data
