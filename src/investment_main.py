@@ -10,7 +10,7 @@ import re
 
 
 # Select the Ollama model (DeepSeek or any other available model)
-selected_model = "Mistral"
+selected_model = "deepseek-r1"
 
 # Load environment variables
 load_dotenv()
@@ -18,7 +18,7 @@ contract_address = os.getenv("CONTRACT_ADDRESS")
 
 def get_investment_plan(contract_address: str, statement: str)->str:
 
-    risk_profile_response = classify_risk(statement, model_name="deepseek-r1")
+    risk_profile_response = classify_risk(statement, model_name=selected_model)
 
     
     # Create a regex pattern that matches any of the risk profile names (case-insensitive)

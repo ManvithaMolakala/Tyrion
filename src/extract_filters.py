@@ -26,9 +26,14 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
 
         query = f"""Analyze the following user statement and classify their risk appetite.  
         If the statement does not indicate any risk preference, classify it as "None."  
-        Risk appetite categories: "Risk averse," "Balanced," "Aggresive," or "None."  
-
-        Return only the risk category.  
+        Risk appetite: "Risk averse," "Balanced," "Aggresive," or "None." 
+        If the person mentions anything about only audited protocols then classify it as is_audited = 1, Else 0 
+        If the person mentions anything about only specific protocols then classify it as protocols = [protocols], Else []
+        If the person mentions anything about only specific risk levels then classify it as risk_levels such as low risk pools or medium risk pools = [risk_levels], Else [] 
+        If the person mentions anything about only specific TVL then classify it as tvl = [tvl], Else []
+        If the person mentions anything about greater than a specific apy then classify it as apy = [apy], Else []
+        If the person mentions anything about invest only specific assets/tokens then classify it as assets = [assets], Else [] 
+        Return only the risk levels, is_audited, protocols, risk levels in dictionary.  
 
         User statement: {statement}"""
         
@@ -48,6 +53,6 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
         return f"Error: {str(e)}"
 
 # # Example Usage
-# user_statement = "Please analyse the funds in my wallet '0xabcd' and suggest an investment strategy. I do not want to risk my funds but also not want to compromise on returns completely. Please look for a middle ground. Please suggest investment options."
-# result = classify_risk(user_statement)
-# print(result)
+user_statement = "Please analyse the funds in my wallet '0xabcd' and suggest an investment strategy. I do not want to risk my funds but also not want to compromise on returns completely. Please look for a middle ground. Please suggest investment options."
+result = classify_risk(user_statement)
+print(result)

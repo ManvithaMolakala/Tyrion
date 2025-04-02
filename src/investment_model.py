@@ -19,7 +19,7 @@ def prioritize_assets(df):
     """Sorts assets by risk level and highest APY within each level."""
     risk_priority = {"low": 0, "medium": 1, "high": 2}
     df["risk_priority"] = df["risk_rating"].map(risk_priority)
-    return df.sort_values(by=["risk_priority", "net_apy"], ascending=[True, False])
+    return df.sort_values(by=["risk_priority", "apy"], ascending=[True, False])
 
 
 def adjust_allocation_percentages(asset_allocations, balance):
@@ -28,14 +28,16 @@ def adjust_allocation_percentages(asset_allocations, balance):
 
     if total_percentage != 100.0:
         difference = 100.0 - total_percentage
-        best_pool = max(asset_allocations, key=lambda p: p["net_apy"])
+        print("Asset Allocations:", asset_allocations)
+        best_pool = max(asset_allocations, key=lambda p: p["% apy"])
         best_pool["% allocation"] += difference
         best_pool["allocated_amount"] += (difference / 100) * balance
 
     return asset_allocations
 
 
-def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
+def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC, audited_only=False, protocols=None, 
+                    risk_levels=None, min_tvl=0, assets = None):
     """
     Allocates 100% of each asset according to the risk profile, ensuring:
     ✅ Full allocation of all funds.
@@ -45,8 +47,23 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
     """
     with open(file_path, "r") as file:
         data = json.load(file)
-    
     df = pd.DataFrame(data)
+    # Apply Filters
+    if audited_only:
+        df = df[df["is_audited"] == True]  # Keep only audited pools
+    if protocols:
+        df = df[df["protocol"].isin(protocols)]  # Keep only selected protocols
+    if assets:
+        df = df[df["asset"].isin(assets)]  # Keep only selected protocols
+    if risk_levels:
+        df = df[df["risk_rating"].isin(risk_levels)]  # Keep only selected risk levels
+
+    df = df[(df["tvlusd"] >= min_tvl)]  # Apply TVL limits
+    
+    if df.empty:
+        print("No pools match the specified filters.")
+        return {}
+    
     df = prioritize_assets(df)
     allocation = get_allocation(risk_profile)
     investment_plan = {}
@@ -61,14 +78,14 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
 
         if "low" in risk_groups.groups:
             low_risk_assets = risk_groups.get_group("low")
-            best_low_risk_pool = low_risk_assets[low_risk_assets["asset"] == asset].nlargest(1, "net_apy")
+            best_low_risk_pool = low_risk_assets[low_risk_assets["asset"] == asset].nlargest(1, "apy")
 
             if not best_low_risk_pool.empty:
                 best_low_risk_pool = best_low_risk_pool.iloc[0]
 
         if "medium" in risk_groups.groups:
             medium_risk_assets = risk_groups.get_group("medium")
-            best_medium_risk_pool = medium_risk_assets[medium_risk_assets["asset"] == asset].nlargest(1, "net_apy")
+            best_medium_risk_pool = medium_risk_assets[medium_risk_assets["asset"] == asset].nlargest(1, "apy")
 
             if not best_medium_risk_pool.empty:
                 best_medium_risk_pool = best_medium_risk_pool.iloc[0]
@@ -78,7 +95,7 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
         for risk, percentage in allocation.items():
             if percentage > 0 and risk in risk_groups.groups:
                 risk_assets = risk_groups.get_group(risk)
-                best_pool = risk_assets[risk_assets["asset"] == asset].nlargest(1, "net_apy")
+                best_pool = risk_assets[risk_assets["asset"] == asset].nlargest(1, "apy")
 
                 if not best_pool.empty:
                     best_pool = best_pool.iloc[0]
@@ -88,11 +105,11 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
                         risk == "medium"
                         and best_low_risk_pool is not None
                         and not best_low_risk_pool.empty
-                        and best_pool["net_apy"] < best_low_risk_pool["net_apy"]
+                        and best_pool["apy"] < best_low_risk_pool["apy"]
                     ):
                         print(
-                            f"Skipping {best_pool['pool_name']} (Medium Risk, {best_pool['net_apy']}%) "
-                            f"in favor of {best_low_risk_pool['pool_name']} (Low Risk, {best_low_risk_pool['net_apy']}%)"
+                            f"Skipping {best_pool['pool']} (Medium Risk, {best_pool['apy']}%) "
+                            f"in favor of {best_low_risk_pool['pool']} (Low Risk, {best_low_risk_pool['apy']}%)"
                         )
                         best_pool = best_low_risk_pool  # Replace with better low-risk option
 
@@ -101,11 +118,11 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
                         risk == "high"
                         and best_medium_risk_pool is not None
                         and not best_medium_risk_pool.empty
-                        and best_pool["net_apy"] < best_medium_risk_pool["net_apy"]
+                        and best_pool["apy"] < best_medium_risk_pool["apy"]
                     ):
                         print(
-                            f"Skipping {best_pool['pool_name']} (High Risk, {best_pool['net_apy']}%) "
-                            f"in favor of {best_medium_risk_pool['pool_name']} (Medium Risk, {best_medium_risk_pool['net_apy']}%)"
+                            f"Skipping {best_pool['pool']} (High Risk, {best_pool['apy']}%) "
+                            f"in favor of {best_medium_risk_pool['pool']} (Medium Risk, {best_medium_risk_pool['apy']}%)"
                         )
                         best_pool = best_medium_risk_pool  # Replace with better medium-risk option
 
@@ -113,22 +130,27 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC):
                     total_allocated += allocated_amount  # Track total allocation
 
                     # **Merge duplicate pools**
-                    if best_pool["pool_name"] in asset_allocations:
-                        asset_allocations[best_pool["pool_name"]]["allocated_amount"] += allocated_amount
-                        asset_allocations[best_pool["pool_name"]]["% allocation"] += percentage * 100
+                    if best_pool["pool"] in asset_allocations:
+                        asset_allocations[best_pool["pool"]]["allocated_amount"] += allocated_amount
+                        asset_allocations[best_pool["pool"]]["% allocation"] += round(percentage * 100, 1)
                     else:
-                        asset_allocations[best_pool["pool_name"]] = {
-                            "pool": best_pool["pool_name"],
-                            "allocated_amount": allocated_amount,
-                            "% allocation": percentage * 100,
-                            "net_apy": best_pool["net_apy"],
-                            "risk": best_pool["risk_rating"]
+                        print(best_pool)
+                        asset_allocations[best_pool["pool"]] = {
+                            "protocol": str(best_pool["protocol"]),
+                            "pool/strategy": str(best_pool["pool"]),
+                            "allocated_amount": float(allocated_amount),
+                            "% allocation": float(percentage * 100),
+                            "% apy": float(round(best_pool["apy"],2)),
+                            "risk": str(best_pool["risk_rating"]),
+                            "is_audited": bool(best_pool["is_audited"]),
+                            "tvlusd": float(best_pool["tvlusd"]),
                         }
 
         # **Handle any unallocated funds due to rounding**
         rounding_error = balance - total_allocated
+
         if rounding_error > 0 and asset_allocations:
-            best_pool = max(asset_allocations.values(), key=lambda p: p["net_apy"])
+            best_pool = max(asset_allocations.values(), key=lambda p: p["% apy"])
             best_pool["allocated_amount"] += rounding_error
             best_pool["% allocation"] += (rounding_error / balance) * 100
 
