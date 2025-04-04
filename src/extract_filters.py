@@ -24,12 +24,12 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
             temperature=0.1  
         )
 
-        query = f"""Analyze the following user statement and classify their risk appetite.  
+        query = f"""Analyze the following user statement and classify their risk profile.  
         If the statement does not indicate any risk preference, classify it as "None."  
-        Risk appetite: "Risk averse," "Balanced," "Aggresive," or "None." 
+        Risk profile: "Risk averse," "Balanced," "Aggresive," or "None." 
+        If the person mentions anything about only specific risk levels then classify it as risk_levels such as low risk pools or medium risk pools = [risk_levels], Else [] 
         If the person mentions anything about only audited protocols then classify it as is_audited = 1, Else 0 
         If the person mentions anything about only specific protocols then classify it as protocols = [protocols], Else []
-        If the person mentions anything about only specific risk levels then classify it as risk_levels such as low risk pools or medium risk pools = [risk_levels], Else [] 
         If the person mentions anything about only specific TVL then classify it as tvl = [tvl], Else []
         If the person mentions anything about greater than a specific apy then classify it as apy = [apy], Else []
         If the person mentions anything about invest only specific assets/tokens then classify it as assets = [assets], Else [] 

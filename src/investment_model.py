@@ -134,7 +134,6 @@ def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC, audite
                         asset_allocations[best_pool["pool"]]["allocated_amount"] += allocated_amount
                         asset_allocations[best_pool["pool"]]["% allocation"] += round(percentage * 100, 1)
                     else:
-                        print(best_pool)
                         asset_allocations[best_pool["pool"]] = {
                             "protocol": str(best_pool["protocol"]),
                             "pool/strategy": str(best_pool["pool"]),
