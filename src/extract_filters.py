@@ -52,7 +52,7 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# # Example Usage
-user_statement = "Please analyse the funds in my wallet '0xabcd' and suggest an investment strategy. I do not want to risk my funds but also not want to compromise on returns completely. Please look for a middle ground. Please suggest investment options."
-result = classify_risk(user_statement)
-print(result)
+# # # Example Usage
+# user_statement = "Please analyse the funds in my wallet '0xabcd' and suggest an investment strategy. I do not want to risk my funds but also not want to compromise on returns completely. Please look for a middle ground. Please suggest investment options."
+# result = classify_risk(user_statement)
+# print(result)

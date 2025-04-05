@@ -12,7 +12,12 @@ def get_allocation(risk_profile):
         "balanced": {"high": 0.1, "medium": 0.4, "low": 0.5},
         "aggressive": {"high": 0.3, "medium": 0.4, "low": 0.3},
     }
-    return risk_allocations.get(risk_profile.strip().lower(), risk_allocations["balanced"])
+    if not risk_profile:
+        risk_profile = "balanced"
+    else:
+        risk_profile = risk_profile.strip().lower()
+
+    return risk_allocations.get(risk_profile, risk_allocations["balanced"])
 
 
 def prioritize_assets(df):
@@ -28,7 +33,6 @@ def adjust_allocation_percentages(asset_allocations, balance):
 
     if total_percentage != 100.0:
         difference = 100.0 - total_percentage
-        print("Asset Allocations:", asset_allocations)
         best_pool = max(asset_allocations, key=lambda p: p["% apy"])
         best_pool["% allocation"] += difference
         best_pool["allocated_amount"] += (difference / 100) * balance

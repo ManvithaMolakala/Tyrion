@@ -16,14 +16,20 @@ selected_model = "deepseek-r1"
 load_dotenv()
 contract_address = os.getenv("CONTRACT_ADDRESS")
 
-def get_investment_plan(contract_address: str, statement: str)->str:
+def get_investment_plan(statement: str)->str:
 
+    # Extract Starknet contract addresses (66-character hex or large decimal numbers)
+    pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
+    contract_address = re.findall(pattern, statement) 
+    contract_address = str(contract_address[0]) if contract_address else None
+    if not contract_address:
+        raise ValueError("No valid contract address found in the statement.")
+    print(f"Contract Address: {contract_address}")
     risk_profile_response = classify_risk(statement, model_name=selected_model)
 
     
     # Create a regex pattern that matches any of the risk profile names (case-insensitive)
     pattern = r"\b(risk averse|balanced|aggressive)\b"
-    
     match = re.search(pattern, risk_profile_response, re.IGNORECASE)
     
     if match:
@@ -40,5 +46,5 @@ def get_investment_plan(contract_address: str, statement: str)->str:
     print(investment_plan_json)
     return investment_plan_json
 
-user_statement = "Please analyse the funds in my wallet '0xabcd' and suggest an investment strategy. I do not want to take risk. Please look for a middle ground. Please suggest investment options."
-invest_plan = get_investment_plan(contract_address, user_statement)
+user_statement = f"Please analyse the funds in my wallet {contract_address} and suggest an investment strategy. I do not want to take risk. Please look for a middle ground. Please suggest investment options."
+invest_plan = get_investment_plan(user_statement)
