@@ -40,7 +40,7 @@ def adjust_allocation_percentages(asset_allocations, balance):
     return asset_allocations
 
 
-def allocate_assets( user_assets, risk_profile, file_path = APY_DATA_LOC, audited_only=False, protocols=None, 
+def allocate_assets( user_assets, risk_profile= "Balanced", file_path = APY_DATA_LOC, audited_only=False, protocols=None, 
                     risk_levels=None, min_tvl=0, assets = None):
     """
     Allocates 100% of each asset according to the risk profile, ensuring:

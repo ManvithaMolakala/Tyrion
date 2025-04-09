@@ -24,16 +24,20 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
             temperature=0.1  
         )
 
-        query = f"""Analyze the following user statement and classify their risk profile.  
+        query = f"""Analyze the following user statement and classify their risk profile, is_audited, protocols, min_tvl, assets, risk levels in a dictionary.  
         If the statement does not indicate any risk preference, classify it as "None."  
-        Risk profile: "Risk averse," "Balanced," "Aggresive," or "None." 
-        If the person mentions anything about only specific risk levels then classify it as risk_levels such as low risk pools or medium risk pools = [risk_levels], Else [] 
-        If the person mentions anything about only audited protocols then classify it as is_audited = 1, Else 0 
-        If the person mentions anything about only specific protocols then classify it as protocols = [protocols], Else []
-        If the person mentions anything about only specific TVL then classify it as tvl = [tvl], Else []
+        Risk profile in plain text not list: "Risk averse," or "Balanced," or "Aggresive," or "None". 
+        only if something is mentioned like only invest in low risk or only invest in high risk then classify it as ["low"], ["medium"] ["high"] = [risk_profile], Else []
+        If the person mentions anything about only low risk or medium risk of protocols then classify it as risk_levels such as only low risk pools or only medium risk pools or low and medium risk pools return ["low"], ["medium"] ["low", "high"]= [risk_levels], Else [] 
+        user will either mention his risk profile or about the risk levels of the protocols. but not both. One is investment thesis and the other is just saying invest only in this risk levels. based on risk profile portfolio will be created.
+        So in summary always one of the risk profile or risk levels will be []. both can be non empty simultaneously.
+        If the person mentions anything about only audited protocols then classify it as is_audited = true, Else false 
+        If the person mentions anything about only specific protocols then classify it as protocols such as only vesu, only strkfarm, only endur etc like = ["vesu"] etc, Else []
+        If the person mentions anything about only specific TVL then classify it as tvl = [tvl], Else 0
         If the person mentions anything about greater than a specific apy then classify it as apy = [apy], Else []
-        If the person mentions anything about invest only specific assets/tokens then classify it as assets = [assets], Else [] 
-        Return only the risk levels, is_audited, protocols, risk levels in dictionary.  
+        Only if the person mentions anything about invest only specific assets/tokens (example strk, ETH, wbtc, xstrk, etc, you can identify by keywords token or asset) then classify it as assets = [assets] do not write your own token just extract, if nothing is mentioned then assign [] 
+        Return the risk profile, is_audited, protocols, min_tvl, assets, risk levels in dictionary.  
+        return a single json. last sentence is current user statement and previous user conversation. 
 
         User statement: {statement}"""
         
@@ -46,7 +50,7 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
 
         # Clean up any potential unwanted tags
         cleaned_text = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-        
+        print(cleaned_text)
         return cleaned_text
 
     except Exception as e:
