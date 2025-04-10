@@ -57,7 +57,7 @@ def get_investment_plan(statement: str)->str:
     
     print(risk_profile)
     user_assets = asyncio.run(get_token_balances_dict(contract_address))
-    print(user_assets)
+    print("Balances",user_assets)
     investment_plan = allocate_assets(user_assets, risk_profile, audited_only=is_audited, protocols=protocols, 
                     risk_levels=risk_levels, min_tvl=min_tvl, assets = assets)  # Allocate funds
     investment_plan_json = json.dumps(investment_plan, indent=4)

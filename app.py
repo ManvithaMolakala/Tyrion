@@ -6,15 +6,15 @@ from flask_cors import CORS
 from src.wallet_portfolio import get_token_balances_dict  
 from src.investment_model import allocate_assets
 from src.extract_filters import classify_risk
+from typing import Dict, List
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-# Temporary in-memory storage for chat history (reset on refresh)
 chat_history = {}
-MAX_HISTORY = 3  # Stores 3 user messages max (no assistant messages stored)
+MAX_HISTORY = 3
+selected_model = "deepseek-r1"
 
-# Helper functions for CORS
 def _build_cors_preflight_response():
     response = make_response()
     response.headers.add("Access-Control-Allow-Origin", "*")
@@ -26,119 +26,104 @@ def _corsify_actual_response(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
-# Model name
-selected_model = "deepseek-r1"
+def format_token_balances(token_balances: Dict[str, float]) -> List[Dict[str, float]]:
+    return [
+        {
+            "symbol": symbol,
+            "balance": balance,
+            "usdValue": balance  # Placeholder
+        }
+        for symbol, balance in token_balances.items() if balance > 0
+    ]
 
-# Core function to generate investment plan
+def get_contract_address(statement: str) -> str:
+    pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
+    match = re.findall(pattern, statement)
+    if not match:
+        raise ValueError("No valid contract address found in the statement.")
+    print(f"[INFO] Using contract address: {match[0]}")
+    return str(match[0])
+
 def get_investment_plan(messages: list) -> dict:
-    # Use latest user message from the chat
-    # Convert message history to a plain text format
     statement = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
-
     print(f"[DEBUG] Chat transcript:\n{statement}")
 
-    # Extract Starknet contract address
-    pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
-    contract_address = re.findall(pattern, statement)
-    contract_address = str(contract_address[0]) if contract_address else None
-    if not contract_address:
-        raise ValueError("No valid contract address found in the statement.")
-
-    print(f"[INFO] Using contract address: {contract_address}")
-
-
-
     filter_string = classify_risk(statement, model_name=selected_model)
-    # Sanity check
+    contract_address = get_contract_address(statement)
+
     if not filter_string:
         raise ValueError("Received empty response from classify_risk()")
 
-    # Strip markdown-like wrapping (e.g. ```json\n...\n```)
-    raw_response = re.sub(r"```json|```", "", filter_string).strip()
-
-    # try:
-    #     filter_response = json.loads(filter_string)
-    # except json.JSONDecodeError as e:
-    #     print("Raw response before parsing:", repr(filter_string))
-    #     raise e
+    match = re.search(r'\{[\s\S]*?\}', filter_string)
+    if not match:
+        raise ValueError("No valid JSON filter response found")
     
-    # Find the first JSON object using regex (this works if JSON is well-formed and at the start)
-    match = re.search(r'\{[\s\S]*?\}', raw_response)
-    if match:
-        json_part = match.group(0)
-        filter_response = json.loads(json_part)
-        print(filter_response)
-    else:
-        print("No JSON found")
+    filter_response = json.loads(match.group(0))
 
-    risk_profile = filter_response["risk_profile"]
-    is_audited = filter_response["is_audited"]
-    protocols = filter_response["protocols"]
-    risk_levels = filter_response["risk_levels"]
-    min_tvl = filter_response["min_tvl"]
-    assets = filter_response["assets"]
-    # Create a regex pattern that matches any of the risk profile names (case-insensitive)
-    pattern = r"\b(risk averse|balanced|aggressive)\b"
-    match = re.search(pattern, risk_profile, re.IGNORECASE)
-    if match:
-        risk_profile = match.group(0).capitalize()  # Return the matched profile in proper case
-    else:
-        risk_profile = None  # No risk profile found
+    risk_profile = filter_response.get("risk_profile", "").capitalize()
+    is_audited = filter_response.get("is_audited", False)
+    protocols = filter_response.get("protocols", [])
+    risk_levels = filter_response.get("risk_levels", [])
+    min_tvl = filter_response.get("min_tvl", 0)
+    assets = filter_response.get("assets", [])
 
     print(f"[INFO] Risk profile classified as: {risk_profile}")
 
-    # Get wallet assets
     user_assets = asyncio.run(get_token_balances_dict(contract_address))
 
-    # Generate investment plan
-    investment_plan = allocate_assets(user_assets, risk_profile, audited_only=is_audited, protocols=protocols, 
-                    risk_levels=risk_levels, min_tvl=min_tvl, assets = assets)  # Allocate funds
-    return investment_plan  # return dict instead of json string
+    investment_plan = allocate_assets(
+        user_assets,
+        risk_profile,
+        audited_only=is_audited,
+        protocols=protocols,
+        risk_levels=risk_levels,
+        min_tvl=min_tvl,
+        assets=assets
+    )
 
-# Health check route
+    return investment_plan
+
 @app.route('/status')
 def index():
     return "Investment Plan API is running!"
 
-# Main API endpoint
 @app.route('/investment-plan', methods=['POST', 'OPTIONS'])
 def investment_plan_api():
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
 
-    data = request.json
-    chat_id = data.get("chat_id")
-    messages = data.get("messages", [])
-
-    if not chat_id:
-        return jsonify({"error": "Missing chat_id"}), 400
-    if not messages:
-        return jsonify({"error": "Missing messages"}), 400
-
     try:
-        # Get user messages from the list
+        data = request.json
+        if not data:
+            return jsonify({"error": "Missing JSON body"}), 400
+
+        chat_id = data.get("chat_id")
+        messages = data.get("messages", [])
+
+        if not chat_id or not messages:
+            return jsonify({"error": "Missing chat_id or messages"}), 400
+
         user_messages = [m for m in messages if m["role"] == "user"]
         if not user_messages:
             return jsonify({"error": "No user message found"}), 400
 
-        # Retrieve or initialize chat history
-        history = chat_history.get(chat_id, [])
-
-        # Add all new user messages to history
-        history.extend(user_messages)
-
-        # Trim to last MAX_HISTORY user messages
+        history = chat_history.get(chat_id, []) + user_messages
         history = history[-MAX_HISTORY:]
-
-        # Save updated history
         chat_history[chat_id] = history
 
         print(f"[INFO] Updated chat history for {chat_id}: {history}")
+        last_message = history[-1]["content"].lower()
 
-        # Generate investment plan using updated history
-        investment_plan = get_investment_plan(history)
+        if "balance" in last_message:
+            contract_address = get_contract_address(last_message)
+            user_assets = asyncio.run(get_token_balances_dict(contract_address))
+            return _corsify_actual_response(jsonify({"balances": format_token_balances(user_assets)}))
 
-        return _corsify_actual_response(jsonify({"investment_plan": investment_plan}))
+        elif "investment" in last_message:
+            return _corsify_actual_response(jsonify({"investment_plan": get_investment_plan(history)}))
+
+        else:
+            return _corsify_actual_response(jsonify({"reply": "Message not understood."}))
 
     except Exception as e:
         print(f"[ERROR] {str(e)}")
