@@ -67,11 +67,19 @@ def get_investment_plan(messages: list) -> dict:
     min_tvl = filter_response.get("min_tvl", 0)
     assets = filter_response.get("assets", [])
 
+    pattern = r"\b(risk averse|balanced|aggressive)\b"
+    match = re.search(pattern, risk_profile, re.IGNORECASE)
+    
+    if match:
+        risk_profile = match.group(0).capitalize()  # Return the matched profile in proper case
+    else:
+        risk_profile = None  # No risk profile found
+
     print(f"[INFO] Risk profile classified as: {risk_profile}")
 
     user_assets = asyncio.run(get_token_balances_dict(contract_address))
 
-    investment_plan = allocate_assets(
+    investment_plan, formatted_plan = allocate_assets(
         user_assets,
         risk_profile,
         audited_only=is_audited,
@@ -80,8 +88,15 @@ def get_investment_plan(messages: list) -> dict:
         min_tvl=min_tvl,
         assets=assets
     )
-
-    return investment_plan
+        #   poolName: 'Pool A',
+        #   protocol: 'Protocol A',
+        #   symbol: 'ETH',
+        #   amount: 1.2,
+        #   yield: 12.5,
+        #   risk: 'medium',
+        #   isAudited: true,
+        #   isOpenSource: true,
+    return formatted_plan
 
 @app.route('/status')
 def index():

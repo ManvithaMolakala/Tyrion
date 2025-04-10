@@ -55,12 +55,19 @@ def allocate_assets( user_assets, risk_profile= "Balanced", file_path = APY_DATA
     # Apply Filters
     if audited_only:
         df = df[df["is_audited"] == True]  # Keep only audited pools
+
     if protocols:
-        df = df[df["protocol"].isin(protocols)]  # Keep only selected protocols
+        protocols_lower = [p.lower() for p in protocols]
+        df = df[df["protocol"].str.lower().isin(protocols_lower)]
+
     if assets:
-        df = df[df["asset"].isin(assets)]  # Keep only selected protocols
+        assets_lower = [a.lower() for a in assets]
+        df = df[df["asset"].str.lower().isin(assets_lower)]
+
     if risk_levels:
-        df = df[df["risk_rating"].isin(risk_levels)]  # Keep only selected risk levels
+        risk_levels_lower = [r.lower() for r in risk_levels]
+        df = df[df["risk_rating"].str.lower().isin(risk_levels_lower)]
+
 
     df = df[(df["tvlusd"] >= min_tvl)]  # Apply TVL limits
     
@@ -159,8 +166,22 @@ def allocate_assets( user_assets, risk_profile= "Balanced", file_path = APY_DATA
 
         if asset_allocations:
             investment_plan[asset] = adjust_allocation_percentages(list(asset_allocations.values()), balance)
+        # Format output as requested
+    formatted_plan = []
+    for asset, pools in investment_plan.items():
+        for pool in pools:
+            formatted_plan.append({
+                "poolName": pool["pool/strategy"],
+                "protocol": pool["protocol"],
+                "symbol": asset,
+                "amount": round(pool["allocated_amount"], 6),
+                "yield": pool["% apy"],
+                "risk": pool["risk"],
+                "isAudited": pool["is_audited"],
+                "isOpenSource": pool.get("is_open_source", True)
+            })
 
-    return investment_plan
+    return investment_plan, formatted_plan
 
 
 

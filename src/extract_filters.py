@@ -24,23 +24,28 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
             temperature=0.1  
         )
 
-        query = f"""Analyze the following user statement and classify their risk profile, is_audited, protocols, min_tvl, assets, risk levels in a dictionary.  
-        If the statement does not indicate any risk preference, classify it as "None."  
-        Risk profile in plain text not list: "Risk averse," or "Balanced," or "Aggresive," or "None". 
-        only if something is mentioned like only invest in low risk or only invest in high risk then classify it as ["low"], ["medium"] ["high"] = [risk_profile], Else []
-        If the person mentions anything about only low risk or medium risk of protocols then classify it as risk_levels such as only low risk pools or only medium risk pools or low and medium risk pools return ["low"], ["medium"] ["low", "high"]= [risk_levels], Else [] 
-        user will either mention his risk profile or about the risk levels of the protocols. but not both. One is investment thesis and the other is just saying invest only in this risk levels. based on risk profile portfolio will be created.
-        So in summary always one of the risk profile or risk levels will be []. both can be non empty simultaneously.
-        If the person mentions anything about only audited protocols then classify it as is_audited = true, Else false 
-        If the person mentions anything about only specific protocols then classify it as protocols such as only vesu, only strkfarm, only endur etc like = ["vesu"] etc, Else []
-        If the person mentions anything about only specific TVL then classify it as tvl = [tvl], Else 0
-        If the person mentions anything about greater than a specific apy then classify it as apy = [apy], Else []
-        Only if the person mentions anything about invest only specific assets/tokens (example strk, ETH, wbtc, xstrk, etc, you can identify by keywords token or asset) then classify it as assets = [assets] do not write your own token just extract, if nothing is mentioned then assign [] 
-        Return the risk profile, is_audited, protocols, min_tvl, assets, risk levels in dictionary.  
-        return a single json. last sentence is current user statement and previous user conversation. 
+        query = f"""Analyze the following user statement and classify the user's investment preferences into the following categories, and return the result in a single JSON object:
+
+        - `risk_profile`: One of `"Risk averse"`, `"Balanced"`, `"Aggressive"`, or `"None"` (plain text, not a list). Use `"Risk averse"` if the user mentions only low-risk investments, `"Balanced"` for a mix, and `"Aggressive"` if the user prefers high-risk opportunities. If no preference is mentioned, use `"None"`.
+
+        - `risk_levels`: Use this only if the user specifies preferences for *protocol risk levels* (e.g., "only low risk pools", "medium risk protocols"). Values must be from: `["low"]`, `["medium"]`, or combinations like `["low", "medium"]`. If nothing is mentioned, return an empty list `[]`.
+
+        - Note: Only one of `risk_profile` or `risk_levels` will be non-empty. If one is set, the other must be empty.
+
+        - `is_audited`: `true` if the user specifies "only audited protocols", else `false`.
+
+        - `protocols`: List of specific protocols mentioned (e.g., `["vesu"]`, `["strkfarm"]`). If none are mentioned, return an empty list `[]`.
+
+        - `min_tvl`: A number if the user mentions a minimum TVL (e.g., "only protocols with TVL over 1M"), otherwise return `0`.
+
+        - `apy`: A list containing the minimum APY if the user mentions one (e.g., "only if APY is over 15%"), otherwise return `[]`.
+
+        - `assets`: List of specific assets or tokens mentioned (e.g., `["ETH", "wBTC", "xSTRK"]`). Only include tokens mentioned explicitly using keywords like "token" or "asset". Otherwise, return `[]`.
+
+        Return the result as a single JSON object. The last sentence is the **current user statement**, with previous conversation context included if applicable.
 
         User statement: {statement}"""
-        
+
         # and a brief justification for your classification
         
         response = filters_bot.invoke(query)
