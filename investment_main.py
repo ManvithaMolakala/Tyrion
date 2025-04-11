@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 from langchain_ollama import OllamaLLM  # Ensure you have LangChain installed
-from wallet_portfolio import get_token_balances_dict  # Import the wallet balance
-from investment_model import allocate_assets
-from extract_filters import classify_risk
+from src.wallet_portfolio import get_token_balances_dict  # Import the wallet balance
+from src.investment_model import allocate_assets
+from src.extract_filters import classify_risk
 import json
 import asyncio
 import re
