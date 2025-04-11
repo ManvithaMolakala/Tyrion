@@ -46,6 +46,7 @@ def get_investment_plan(statement: str)->str:
     risk_levels = filter_response["risk_levels"]
     min_tvl = filter_response["min_tvl"]
     assets = filter_response["assets"]
+    min_apy = filter_response["apy"]
     # Create a regex pattern that matches any of the risk profile names (case-insensitive)
     pattern = r"\b(risk averse|balanced|aggressive)\b"
     match = re.search(pattern, risk_profile, re.IGNORECASE)
@@ -59,7 +60,7 @@ def get_investment_plan(statement: str)->str:
     user_assets = asyncio.run(get_token_balances_dict(contract_address))
     print("Balances",user_assets)
     investment_plan = allocate_assets(user_assets, risk_profile, audited_only=is_audited, protocols=protocols, 
-                    risk_levels=risk_levels, min_tvl=min_tvl, assets = assets)  # Allocate funds
+                    risk_levels=risk_levels, min_tvl=min_tvl, assets = assets, min_apy=min_apy)  # Allocate funds
     investment_plan_json = json.dumps(investment_plan, indent=4)
     # Print the structured investment plan
     print(investment_plan_json)

@@ -66,6 +66,7 @@ def get_investment_plan(messages: list) -> dict:
     risk_levels = filter_response.get("risk_levels", [])
     min_tvl = filter_response.get("min_tvl", 0)
     assets = filter_response.get("assets", [])
+    min_apy = filter_response.get("apy", [])
 
     pattern = r"\b(risk averse|balanced|aggressive)\b"
     match = re.search(pattern, risk_profile, re.IGNORECASE)
@@ -86,7 +87,8 @@ def get_investment_plan(messages: list) -> dict:
         protocols=protocols,
         risk_levels=risk_levels,
         min_tvl=min_tvl,
-        assets=assets
+        assets=assets,
+        min_apy=min_apy,
     )
         #   poolName: 'Pool A',
         #   protocol: 'Protocol A',

@@ -34,13 +34,13 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
 
         - `is_audited`: `true` if the user specifies "only audited protocols", else `false`.
 
-        - `protocols`: List of specific protocols mentioned (e.g., `["vesu"]`, `["strkfarm"]`). If none are mentioned, return an empty list `[]`.
+        - `protocols`: List of specific protocols mentioned (e.g., `["vesu"]`, `["strkfarm"]`, ["endur]). If none are mentioned, return an empty list `[]`.
 
         - `min_tvl`: A number if the user mentions a minimum TVL (e.g., "only protocols with TVL over 1M"), otherwise return `0`.
 
-        - `apy`: A list containing the minimum APY if the user mentions one (e.g., "only if APY is over 15%"), otherwise return `[]`.
+        - `apy`: A number if the user mentions minimum APY (e.g., "only if APY is over 15%"), otherwise return 0.
 
-        - `assets`: List of specific assets or tokens mentioned (e.g., `["ETH", "wBTC", "xSTRK"]`). Only include tokens mentioned explicitly using keywords like "token" or "asset". Otherwise, return `[]`.
+        - `assets`: List of specific assets or tokens mentioned (e.g., `["STRK","ETH", "wBTC", "xSTRK"]`). Only include tokens mentioned explicitly using keywords like "token" or "asset". Otherwise, return `[]`.
 
         Return the result as a single JSON object. The last sentence is the **current user statement**, with previous conversation context included if applicable.
 

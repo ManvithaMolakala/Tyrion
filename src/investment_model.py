@@ -41,7 +41,7 @@ def adjust_allocation_percentages(asset_allocations, balance):
 
 
 def allocate_assets( user_assets, risk_profile= "Balanced", file_path = APY_DATA_LOC, audited_only=False, protocols=None, 
-                    risk_levels=None, min_tvl=0, assets = None):
+                    risk_levels=None, min_tvl=0, assets = None, min_apy=0):
     """
     Allocates 100% of each asset according to the risk profile, ensuring:
     ✅ Full allocation of all funds.
@@ -70,6 +70,8 @@ def allocate_assets( user_assets, risk_profile= "Balanced", file_path = APY_DATA
 
 
     df = df[(df["tvlusd"] >= min_tvl)]  # Apply TVL limits
+
+    df = df[(df["apy"] >= min_apy) ]  # Ensure APY is within valid range
     
     if df.empty:
         print("No pools match the specified filters.")
