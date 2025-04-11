@@ -7,6 +7,7 @@ from src.wallet_portfolio import get_token_balances_dict
 from src.investment_model import allocate_assets
 from src.extract_filters import classify_risk
 from typing import Dict, List
+from src.classify_query import classify_query
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
@@ -40,16 +41,14 @@ def get_contract_address(statement: str) -> str:
     pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
     match = re.findall(pattern, statement)
     if not match:
-        raise ValueError("No valid contract address found in the statement.")
+        raise ValueError("No valid contract address found in the statement. Please provide your address.")
     print(f"[INFO] Using contract address: {match[0]}")
     return str(match[0])
 
-def get_investment_plan(messages: list) -> dict:
-    statement = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
-    print(f"[DEBUG] Chat transcript:\n{statement}")
-
-    filter_string = classify_risk(statement, model_name=selected_model)
+def get_investment_plan(statement: list) -> dict:
     contract_address = get_contract_address(statement)
+    user_assets = asyncio.run(get_token_balances_dict(contract_address))
+    filter_string = classify_risk(statement, model_name=selected_model)
 
     if not filter_string:
         raise ValueError("Received empty response from classify_risk()")
@@ -77,8 +76,6 @@ def get_investment_plan(messages: list) -> dict:
         risk_profile = None  # No risk profile found
 
     print(f"[INFO] Risk profile classified as: {risk_profile}")
-
-    user_assets = asyncio.run(get_token_balances_dict(contract_address))
 
     investment_plan, formatted_plan = allocate_assets(
         user_assets,
@@ -128,17 +125,22 @@ def investment_plan_api():
         history = history[-MAX_HISTORY:]
         chat_history[chat_id] = history
 
-        print(f"[INFO] Updated chat history for {chat_id}: {history}")
-        last_message = history[-1]["content"].lower()
+        statement = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in history])
 
-        if "balance" in last_message:
-            contract_address = get_contract_address(last_message)
+        print(f"[DEBUG] Chat transcript:\n{statement}")
+
+        query_type = classify_query(statement)
+        print(f"[INFO] Query classified as: {query_type}")
+        if query_type == "balance":
+            print(f"[INFO] Query classified as investment.")
+            contract_address = get_contract_address(statement)
             user_assets = asyncio.run(get_token_balances_dict(contract_address))
             return _corsify_actual_response(jsonify({"balances": format_token_balances(user_assets)}))
 
-        elif "investment" in last_message:
-            return _corsify_actual_response(jsonify({"investment_plan": get_investment_plan(history)}))
-
+        elif query_type == "investment":
+            return _corsify_actual_response(jsonify({"investment_plan": get_investment_plan(statement)}))
+        elif query_type == "other":
+            return _corsify_actual_response(jsonify({"other": "I can help you with your investment and balance queries."}))
         else:
             return _corsify_actual_response(jsonify({"reply": "Message not understood."}))
 
