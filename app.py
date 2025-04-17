@@ -1,4 +1,5 @@
 import json
+import time
 import asyncio
 import re
 from datetime import datetime
@@ -9,6 +10,7 @@ from src.investment_model import allocate_assets
 from src.extract_filters import classify_risk
 from typing import Dict, List
 from src.query_llm import classify_query
+from src.chatbot_ollama import create_chatbot
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
@@ -18,6 +20,9 @@ MAX_HISTORY = 3
 selected_model = "deepseek-r1"
 
 LOG_FILE_PATH = "src/data/chat_logs.txt"
+# Initialize the chatbot
+RETRIEVER_PATH = "src/data/combined_retriever.pkl"
+
 
 def _build_cors_preflight_response():
     response = make_response()
@@ -44,14 +49,47 @@ def get_contract_address(statement: str) -> str:
     pattern = r"\b0x[a-fA-F0-9]{64}\b|\b\d{50,80}\b"
     match = re.findall(pattern, statement)
     if not match:
-        raise ValueError("No valid contract address found in the statement. Please provide your address.")
+        raise ValueError("Please provide a valid contract address.")
     print(f"[INFO] Using contract address: {match[0]}")
     return str(match[0])
 
+def extract_query_category_and_response(prompt):
+    try:
+        # Try to extract the JSON structure from the prompt
+        # Find the JSON part (after "Return the result in the following format:")
+        start = prompt.find("{")
+        end = prompt.rfind("}") + 1  # Include closing brace
+        
+        # Extract the JSON part
+        json_part = prompt[start:end]
+        
+        # Parse the extracted JSON
+        parsed_data = json.loads(json_part)
+        
+        # Extract query category and response
+        query_category = parsed_data.get("category", "Unknown")
+        response = parsed_data.get("response", "No response")
+        
+        return query_category, response
+    
+    except Exception as e:
+        return f"Error: {str(e)}"
+    
 def get_investment_plan(statement: str) -> dict:
+    classify_start = time.time()
     contract_address = get_contract_address(statement)
+    classify_end = time.time()
+    print(f"Time taken for classify_query: {classify_end - classify_start} seconds")
+    
+    investment_plan_start = time.time()
     user_assets = asyncio.run(get_token_balances_dict(contract_address))
+    investment_plan_end = time.time()
+    print(f"Time taken for get_token_balances_dict: {investment_plan_end - investment_plan_start} seconds")
+
+    riskfilter_start = time.time()
     filter_string = classify_risk(statement, model_name=selected_model)
+    riskfilter_end = time.time()
+    print(f"Time taken for classify_risk: {riskfilter_end - riskfilter_start} seconds")
 
     if not filter_string:
         raise ValueError("Received empty response from classify_risk()")
@@ -80,17 +118,23 @@ def get_investment_plan(statement: str) -> dict:
 
     print(f"[INFO] Risk profile classified as: {risk_profile}")
 
-    investment_plan, formatted_plan = allocate_assets(
-        user_assets,
-        risk_profile,
-        audited_only=is_audited,
-        protocols=protocols,
-        risk_levels=risk_levels,
-        min_tvl=min_tvl,
-        assets=assets,
-        min_apy=min_apy,
-    )
-    return formatted_plan
+    try:
+        investment_plan, formatted_plan = allocate_assets(
+            user_assets,
+            risk_profile,
+            audited_only=is_audited,
+            protocols=protocols,
+            risk_levels=risk_levels,
+            min_tvl=min_tvl,
+            assets=assets,
+            min_apy=min_apy,
+        )
+        return formatted_plan
+    except ValueError as ve:
+        if "not enough values to unpack" in str(ve):
+            raise ValueError("No investments found for the given filters.")
+        else:
+            raise ve
 
 def log_chat_history(chat_id: str, messages: List[Dict[str, str]]):
     timestamp = datetime.utcnow().isoformat()
@@ -145,16 +189,13 @@ def investment_plan_api():
         print(f"[DEBUG] ClassifyQuery input:\n{statement}")
 
         # Run query classifier
+        classify_start = time.time()
         response = classify_query(statement)
-        print(f"[INFO] Query classified as: {response}")
-        query_type = response
-        # match = re.search(r'Category:\s*(\w+)', response)
-        # if match:
-        #     query_type = match.group(1)
-        #     print(f"[INFO] Extracted category: {query_type}")
-        # else:
-        #     print("[WARN] Category not found in classify_query response")
-        #     return _corsify_actual_response(jsonify({"error": "Query classification failed."}))
+        classify_end = time.time()
+        print(f"Time taken for classify_query: {classify_end - classify_start} seconds")
+        query_type,response_text = extract_query_category_and_response(response)
+        print(f"[INFO] Query classified as: {query_type}")
+        print(f"[INFO] Model response: {response_text}")
 
         if query_type == "balance_query":
             print(f"[INFO] Handling balance query")
@@ -167,16 +208,23 @@ def investment_plan_api():
             return _corsify_actual_response(jsonify({"investment_plan": get_investment_plan(statement)}))
         
         elif query_type == "other_query":
+            # chatbot = create_chatbot(RETRIEVER_PATH, path_to_local_model)
+            chatbot = create_chatbot(RETRIEVER_PATH)    
+            chatbot_response = chatbot(statement)
             print(f"[INFO] Handling other query")
-            return _corsify_actual_response(jsonify(response))
+            return _corsify_actual_response(jsonify(chatbot_response["result"]))
 
         else:
             print(f"[WARN] Unrecognized query type: {query_type}")
-            return _corsify_actual_response(jsonify({"reply": "Sorry, I couldn't understand your query."}))
+            return _corsify_actual_response(jsonify({"error": "Sorry, I couldn't understand your query."}))
+
+    except ValueError as ve:
+        print(f"[ERROR] {str(ve)}")
+        return _corsify_actual_response(jsonify({"error": str(ve)})), 400
 
     except Exception as e:
         print(f"[ERROR] {str(e)}")
-        return _corsify_actual_response(jsonify({"error": str(e)})), 500
+        return _corsify_actual_response(jsonify({"error": "An unexpected error occurred."})), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -28,21 +28,28 @@ def classify_query(statement: str, model_name: str = "mistral", base_url: str = 
             base_url=base_url,
             temperature=0.1
         )
-
         prompt = f"""
-You are a smart assistant designed to classify user queries into one of three categories:
+        You are a smart assistant designed to classify user queries into one of three categories:
 
-1. investment_query — Queries asking for contract addresses, investment suggestions, or investment filters.
-2. balance_query — Queries asking for wallet balance or related information.
-3. other_query — Any queries that don't fall into the above two.
+        1. investment_query — Queries asking for contract addresses, investment suggestions, or investment filters.
+        2. balance_query — Queries asking for wallet balance or related information.
+        3. other_query — Any queries that don't fall into the above two.
 
-Instructions:
-- If the input clearly falls into 'investment_query' or 'balance_query', respond with just the category name.
-- If it's 'other_query', respond with the category name and a helpful, intelligent reply.
+        Instructions:
+        - Return a JSON object with a 'category' key set to one of the three categories.
+        - If the input falls into 'other_query', also include a helpful and intelligent 'response'.
+        - For 'investment_query' and 'balance_query', set 'response' to null.
 
-User Query:
-{statement}
-"""
+        Return the result in the following format:
+        json
+        {{
+            "category": "investment_query",
+            "response": null
+        }}
+
+        User Query:
+        {statement}
+        """
 
         logger.info("Sending prompt to model:\n%s", prompt)
 
@@ -66,14 +73,14 @@ User Query:
 
 
 # === Example Usage ===
-# if __name__ == "__main__":
-#     test_statements = [
-#         "give investment suggestion for my wallet 0x1234567890abcdef1234567890abcdef12345678",
-#         "What's my wallet balance?",
-#         "How's the weather today?",
-#     ]
+if __name__ == "__main__":
+    test_statements = [
+        "give investment suggestion for my wallet 0x1234567890abcdef1234567890abcdef12345678",
+        "What's my wallet balance?",
+        "How's the weather today?",
+    ]
 
-#     for stmt in test_statements:
-#         print(f"\nInput: {stmt}")
-#         result = classify_query(stmt)
-#         print("Response:", result)
+    for stmt in test_statements:
+        print(f"\nInput: {stmt}")
+        result = classify_query(stmt)
+        print("Response:", result)
