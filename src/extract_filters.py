@@ -1,21 +1,10 @@
 from langchain_ollama import OllamaLLM  
 import re  
 
-def output_bot(response: str, model_name="deepseek-r1") -> str:
-    filters_bot = OllamaLLM(
-        model=model_name,
-        base_url="http://localhost:11434",  
-        temperature=0.1  
-    )
+model_name = "deepseek-r1"
+# model_name = "mistral"
 
-    prompt = f"""Please use the information given to you in order to send it to the user in a more human-like way withoput markdown. 
-    Please make sure to include the following information in your response:
-    {response}"""
-    
-    return filters_bot.invoke(prompt)
-
-
-def classify_risk(statement: str, model_name="deepseek-r1"):
+def classify_risk(statement: str, model_name=model_name):
     """Classifies the user's risk appetite based on their statement."""
     try:
         filters_bot = OllamaLLM(
@@ -40,7 +29,7 @@ def classify_risk(statement: str, model_name="deepseek-r1"):
 
         - `apy`: A number if the user mentions minimum APY (e.g., "only if APY is over 15%"), otherwise return 0.
 
-        - `assets`: List of specific assets or tokens mentioned (e.g., `["STRK","ETH", "wBTC", "xSTRK"]`). Only include tokens mentioned explicitly using keywords like "token" or "asset". Otherwise, return `[]`.
+        - `assets`: List of specific assets or tokens mentioned (e.g., `["USDC","STRK","ETH", "wBTC", "xSTRK"]`). Only include tokens mentioned explicitly using keywords like "token" or "asset". Otherwise, return `[]`.
 
         Return the result as a single JSON object. The last sentence is the **current user statement**, with previous conversation context included if applicable.
 
